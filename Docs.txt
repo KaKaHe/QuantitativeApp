@@ -1,0 +1,2 @@
+URL of identification file:
+http://api.eia.gov/bulk/manifest.txt. 

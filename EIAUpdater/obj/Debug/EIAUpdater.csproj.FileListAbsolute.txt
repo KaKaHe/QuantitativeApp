@@ -1,0 +1,2 @@
+C:\Quantitative_Finance\Program\QuantitativeApp\EIAUpdater\obj\Debug\EIAUpdater.csprojResolveAssemblyReference.cache
+C:\Quantitative_Finance\Program\QuantitativeApp\EIAUpdater\obj\Debug\EIAUpdater.csproj.CoreCompileInputs.cache
