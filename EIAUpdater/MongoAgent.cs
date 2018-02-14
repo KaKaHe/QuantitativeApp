@@ -19,6 +19,10 @@ namespace EIAUpdater
         private static MongoClient client = null;
         private static IMongoDatabase database = null;
         private static IMongoCollection<BsonDocument> collection = null;
+        //private enum UPDATETYPE
+        //{
+
+        //}
 
         private MongoAgent(MongoClientSettings mcs)
         {
@@ -48,13 +52,17 @@ namespace EIAUpdater
             collection = null;
         }
 
-        public void insertCollection(string strCollection, BsonDocument bsonDocument)
+        public void InsertCollection(string strCollection, BsonDocument bsonDocument)
         {
-            //collection = database.GetCollection<BsonDocument>(strCollection);
-            //collection.InsertOne(bsonDocument);
             getCollection(strCollection);
-            collection = database.GetCollection<BsonDocument>(strCollection);
             collection.InsertOne(bsonDocument);
+            releaseCollection();
+        }
+
+        public async void InsertCollectionAsync(string strCollection, BsonDocument bsonDocument)
+        {
+            getCollection(strCollection);
+            await collection.InsertOneAsync(bsonDocument);
             releaseCollection();
         }
 
@@ -121,25 +129,39 @@ namespace EIAUpdater
 
         public List<BsonDocument> readCollection(string strCollection, BsonDocument document, FindOptions options = null)
         {
-            //collection = database.GetCollection<BsonDocument>(strCollectionName);
             getCollection(strCollection);
             var myObj = collection.Find(document, options).ToCursor();
             releaseCollection();
             return myObj.ToList();
-
         }
 
-        public void updateCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
+        public async void UpdateCollectionAsync(string strCollection, BsonDocument filter, BsonDocument document, UpdateOptions options = null)
         {
             getCollection(strCollection);
-            collection.UpdateOne(query, document, options);
+            BsonDocument bDoc = new BsonDocument("$set", document);
+            await collection.UpdateOneAsync(filter, bDoc, options);
             releaseCollection();
         }
 
-        public void replaceCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
+        public void UpdateCollection(string strCollection, BsonDocument filter, BsonDocument document, UpdateOptions options = null)
+        {
+            getCollection(strCollection);
+            BsonDocument bDoc = new BsonDocument("$set", document);
+            collection.UpdateOne(filter, bDoc, options);
+            releaseCollection();
+        }
+
+        public void ReplaceCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
         {
             getCollection(strCollection);
             collection.ReplaceOne(query, document, options);
+            releaseCollection();
+        }
+
+        public async void ReplaceCollectionAsync(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
+        {
+            getCollection(strCollection);
+            await collection.ReplaceOneAsync(query, document, options);
             releaseCollection();
         }
 

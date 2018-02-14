@@ -40,6 +40,7 @@ namespace EIAUpdater
             {
                 //If the mainfest file downloaded failed, do something else other than parsing.
             }
+            Console.ReadLine();
         }
 
         private bool Downloading()
@@ -115,7 +116,7 @@ namespace EIAUpdater
                 {
                     //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
                     summary.Add(fs);
-                    conn.insertCollection(CollectionName, BsonDocument.Parse(token.First.ToString()));
+                    conn.InsertCollectionAsync(CollectionName, BsonDocument.Parse(token.First.ToString()));
                 }
                 else
                 {
@@ -126,10 +127,12 @@ namespace EIAUpdater
                     {
                         summary.Add(fs);
                         //update performing.
-                        //query = new BsonDocument("_id", old._id);
+                        query = new BsonDocument("_id", old._id);
                         BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(fs));
-                        doc.SetElement(new BsonElement("_id", getObjectId(old._id)));
-                        conn.replaceCollection(CollectionName, query, doc);
+                        //doc.SetElement(new BsonElement("_id", getObjectId(old._id)));
+                        doc.SetElement(new BsonElement("_id", old._id));
+                        //conn.replaceCollection(CollectionName, query, doc);
+                        conn.UpdateCollectionAsync(CollectionName, query, doc);
                     }
                 }
 
@@ -153,6 +156,7 @@ namespace EIAUpdater
             return ma;
         }
 
+        [Obsolete]
         private ObjectId getObjectId(ObjectId oldone)
         {
             TimeSpan increment = DateTime.Now - oldone.CreationTime;
