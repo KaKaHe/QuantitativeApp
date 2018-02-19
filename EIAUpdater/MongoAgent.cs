@@ -19,10 +19,7 @@ namespace EIAUpdater
         private static MongoClient client = null;
         private static IMongoDatabase database = null;
         private static IMongoCollection<BsonDocument> collection = null;
-        //private enum UPDATETYPE
-        //{
-
-        //}
+        //private enum UPDATETYPE{}
 
         private MongoAgent(MongoClientSettings mcs)
         {
@@ -45,6 +42,11 @@ namespace EIAUpdater
         private void getCollection(string strCollection)
         {
             collection = database.GetCollection<BsonDocument>(strCollection);
+            if (collection == null)
+            {
+                database.CreateCollection(strCollection, new CreateCollectionOptions { AutoIndexId = true });
+                collection = database.GetCollection<BsonDocument>(strCollection);
+            }
         }
 
         private void releaseCollection()
@@ -66,9 +68,11 @@ namespace EIAUpdater
             releaseCollection();
         }
 
-        public void insertCollection(string strCollection, string strData)
+        public void InsertCollection(string strCollection, List<BsonDocument> bsonDocument)
         {
-
+            getCollection(strCollection);
+            collection.InsertMany(bsonDocument);
+            releaseCollection();
         }
 
         [Obsolete]

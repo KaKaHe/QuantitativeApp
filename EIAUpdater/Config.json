@@ -1,0 +1,8 @@
+﻿{
+  "Manifest": "http://api.eia.gov/bulk/manifest.txt",
+  "LocalFolder": "C:\\Quantitative_Finance\\DataGrabing\\",
+  "MongoHost": "localhost",
+  "MongoDB": "Quatitative",
+  "MongoDBPort": 27017,
+  "ManifestCollection": "EIA_Manifest"
+}

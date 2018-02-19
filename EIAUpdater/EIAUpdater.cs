@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.IO;
+using System.IO.Compression;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -14,59 +17,188 @@ namespace EIAUpdater
 {
     class EIAUpdater
     {
-        private string DataBaseName = "Quantitative";
-        private string CollectionName = "EIA_Manifest";
-        private string MongoDBAddress = "localhost";
+        private string MongoDB = "Quantitative";
+        private string ManifestCollection = "EIA_Manifest";
+        private string MongoHost = "localhost";
         private int MongoDBPort = 27017;
-        private string RemoteURL = "http://api.eia.gov/bulk/manifest.txt";
-        private string LocalFolder = "C:\\Quantitative_Finance\\DataGrabing\\";
+        private string Manifest = "http://api.eia.gov/bulk/manifest.txt";
+        private string LocalFolder = "C:\\Quantitative_Finance\\DataGrabing";
         private string LocalFileName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
-
+        //public event AsyncCompletedEventHandler DownloadCompleted;
         static void Main(string[] args)
         {
             //Console.WriteLine("Hello World!");
-            EIAUpdater eia = new EIAUpdater();
+            //EIAUpdater eia = new EIAUpdater();
+            EIAUpdater eia = Initializer();
             //ObjectId id = new ObjectId(DateTime.UtcNow, Environment.MachineName.GetHashCode()/100, (short)System.Diagnostics.Process.GetCurrentProcess().Id, 1);
             //ObjectId id = cd.getObjectId(new ObjectId("5a808a103c99832c2c4fd3a7"));
 
-            if (eia.Downloading())
+            if (eia.GetManifest())
             {
                 //If the manifest file is downloaded successfully, continue doing parsing.
                 List<FileSummary> dataList = eia.Parsing();
+                List<Task> taskList = new List<Task>();
+
+                foreach (FileSummary fs in dataList)
+                {
+                    try
+                    {
+                        FileHandler handler = new FileHandler(fs.accessURL);
+                        string downloadedFile = "";
+                        string extractedFile = "";
+                        Task download = Task.Factory.StartNew(() => downloadedFile = handler.Download(Path.Combine(eia.LocalFolder, fs.identifier)));
+                        //Task extract = new Task(() => eia.UnZipping(str, Path.Combine(eia.LocalFolder, fs.identifier)));
+                        Task extract = download.ContinueWith((v) => extractedFile = eia.UnZipping(downloadedFile, Path.Combine(eia.LocalFolder, fs.identifier)));
+                        Task dataparse = extract.ContinueWith((v) => eia.ParsingData(extractedFile, fs.identifier));
+                        //taskList.Add(Task.Factory.StartNew(() => handler.Download(Path.Combine(eia.LocalFolder, fs.identifier))));
+                        //Task s = Task.Run(() => eia.DataDownload(fs));
+                        //result = s.IsCompleted | s.IsCompleted;
+                        //taskList.Add(s);
+                        taskList.Add(download);
+                        taskList.Add(extract);
+                        taskList.Add(dataparse);
+                    }
+                    catch(Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
+                    //Console.WriteLine(s.IsCompleted);
+                }
+
+                Task.WaitAll(taskList.ToArray());
+                //Task t = Task.Run(() => eia.DataDownload(dataList));
+                //t.Wait();
+
+                Console.WriteLine("all Done");
+                //foreach (FileSummary fs in dataList)
+                //{
+                //    try
+                //    {
+                //        //Start downloading files that have update.
+                //        FileHandler handler = new FileHandler(fs.accessURL);
+                //        //handler.Download(eia.LocalFolder + "\\" + fs.identifier);
+                //        handler.Download(Path.Combine(eia.LocalFolder, fs.identifier));
+                //    }
+                //    catch(Exception e)
+                //    {
+                //        Console.WriteLine(e.Message);
+                //    }
+                //}
 
                 //If there is no update, stop application.
+                Console.ReadLine();
+                //Console.ReadLine();
             }
             else
             {
                 //If the mainfest file downloaded failed, do something else other than parsing.
             }
-            Console.ReadLine();
+            //Console.ReadLine();
+            //Console.ReadLine();
         }
 
-        private bool Downloading()
+        private static EIAUpdater Initializer()
+        {
+            StreamReader sr = new StreamReader("Config.json");
+            EIAUpdater e = JsonConvert.DeserializeObject<EIAUpdater>(sr.ReadToEnd());
+            return e;
+        }
+
+        private bool GetManifest()
         {
             //string strURL = "http://api.eia.gov/bulk/manifest.txt";
             //string strLocation = "C:\\Quantitative_Finance\\DataGrabing\\";
             //string strLocalName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
 
             //Console.WriteLine("Current location: " + System.IO.Directory.GetCurrentDirectory().ToString());
-            try
+            using (var client = new WebClient())
             {
-                using (var client = new WebClient())
+                try
                 {
-                    if (!File.Exists(LocalFolder + LocalFileName))
+                    //client.DownloadFile(Manifest, LocalFolder);
+                    string strLocalName = Path.Combine(LocalFolder, LocalFileName);
+                    if (!File.Exists(strLocalName))
                     {
-                        client.DownloadFile(RemoteURL, LocalFolder + LocalFileName);
+                        client.DownloadFile(Manifest, strLocalName);
                     }
                 }
-                return true;
+                catch (WebException we)
+                {
+                    Console.WriteLine(we.Message.ToString());
+                    return false;
+                }
+                finally
+                {
+                    client.Dispose();
+                }
             }
-            catch (WebException we)
-            {
-                Console.WriteLine(we.Message.ToString());
-                return false;
-            }
+            return true;
         }
+
+        //private Task DataDownload(FileSummary fs)
+        //{
+        //    try
+        //    {
+        //        //Start downloading files that have update.
+        //        FileHandler handler = new FileHandler(fs.accessURL);
+        //        //handler.Download(eia.LocalFolder + "\\" + fs.identifier);
+        //        string strResult = handler.DownloadAsync(Path.Combine(LocalFolder, fs.identifier));
+
+        //        if(strResult.Equals("Done"))
+        //        {
+        //            return;
+        //        }
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Console.WriteLine(e.Message);
+        //    }
+        //    return;
+        //}
+
+        //private void DataDownload(List<FileSummary> list)
+        //{
+        //    List<string> taskList = new List<string>();
+        //    foreach (FileSummary fs in list)
+        //    {
+        //        try
+        //        {
+
+        //            //Start downloading files that have update.
+        //            //FileHandler handler = new FileHandler(fs.accessURL);
+        //            ////handler.Download(eia.LocalFolder + "\\" + fs.identifier);
+        //            //Console.WriteLine("Starting " + fs.identifier);
+        //            //string result = await handler.Download(Path.Combine(LocalFolder, fs.identifier));
+        //            ////string a = await result;
+        //            //Console.WriteLine("End " + fs.identifier);
+        //            //taskList.Add(result);
+        //            Task<string> re = d(fs);
+        //            taskList.Add(re.Result);
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            Console.WriteLine(e.Message);
+        //        }
+        //    }
+        //    //await taskList;
+        //    foreach(string a in taskList)
+        //    {
+        //        Console.WriteLine(a);
+        //    }
+
+        //    //return;
+        //}
+
+        //private async Task<string> d(FileSummary fs)
+        //{
+        //    FileHandler handler = new FileHandler(fs.accessURL);
+        //    Console.WriteLine("Starting " + fs.identifier);
+        //    string result = handler.Download(Path.Combine(LocalFolder, fs.identifier));
+        //    //string a = await result;
+        //    Console.WriteLine("End " + fs.identifier);
+        //    return result;
+        //    //taskList.Add(result);
+        //}
 
         [Obsolete]
         private void logManifest()
@@ -97,7 +229,7 @@ namespace EIAUpdater
             MongoAgent conn = getConn();
             //string strManifest = "C:\\Quantitative_Finance\\DataGrabing\\manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
 
-            StreamReader sr = new StreamReader(LocalFolder + LocalFileName);
+            StreamReader sr = new StreamReader(Path.Combine(LocalFolder, LocalFileName));
             JObject jsonStr = JObject.Parse(sr.ReadToEnd());
 
             //JObject obj = (JObject)JToken.ReadFrom(new JsonTextReader(new StringReader(jsonStr)));
@@ -111,12 +243,12 @@ namespace EIAUpdater
 
                 //Compare with the last record to decide if it needs to be download today.
                 BsonDocument query = new BsonDocument("identifier", fs.identifier);
-                List<BsonDocument> list = conn.readCollection(CollectionName, query);
+                List<BsonDocument> list = conn.readCollection(ManifestCollection, query);
                 if (list.Count == 0)
                 {
                     //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
                     summary.Add(fs);
-                    conn.InsertCollectionAsync(CollectionName, BsonDocument.Parse(token.First.ToString()));
+                    conn.InsertCollectionAsync(ManifestCollection, BsonDocument.Parse(token.First.ToString()));
                 }
                 else
                 {
@@ -131,8 +263,8 @@ namespace EIAUpdater
                         BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(fs));
                         //doc.SetElement(new BsonElement("_id", getObjectId(old._id)));
                         doc.SetElement(new BsonElement("_id", old._id));
-                        //conn.replaceCollection(CollectionName, query, doc);
-                        conn.UpdateCollectionAsync(CollectionName, query, doc);
+                        //conn.replaceCollection(ManifestCollection, query, doc);
+                        conn.UpdateCollectionAsync(ManifestCollection, query, doc);
                     }
                 }
 
@@ -148,12 +280,63 @@ namespace EIAUpdater
         {
             MongoClientSettings clientSettings = new MongoClientSettings
             {
-                Server = new MongoServerAddress(MongoDBAddress, MongoDBPort),
+                Server = new MongoServerAddress(MongoHost, MongoDBPort),
                 UseSsl = false
             };
             MongoAgent ma = MongoAgent.getInstance(clientSettings);
-            ma.setDatabase(DataBaseName);
+            ma.setDatabase(MongoDB);
             return ma;
+        }
+
+        private string UnZipping(string zipFile, string extractFolder)
+        {
+            Console.WriteLine("start constrating:" + zipFile);
+            //System.IO.Compression.
+            try
+            {
+                ZipFile.ExtractToDirectory(zipFile, extractFolder);
+
+                string[] extracted = Directory.GetFiles(extractFolder, "*.txt");
+                File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
+
+                return extracted[0];
+            }
+            catch(Exception e)
+            {
+                throw e;
+            }
+        }
+
+        private void ParsingData(string DataFile, string Identifier)
+        {
+            Console.WriteLine("strat parsing data of " + DataFile);
+            List<BsonDocument> documents = new List<BsonDocument>();
+            StreamReader reader = new StreamReader(DataFile);
+            try
+            {
+                string str = reader.ReadLine();
+                while (true)
+                {
+                    var obj = JsonConvert.DeserializeObject(str);
+                    documents.Add(BsonDocument.Parse(str));
+                    str = reader.ReadLine();
+                    if (string.IsNullOrEmpty(str))
+                    {
+                        break;
+                    }
+                }
+                MongoAgent conn = getConn();
+                conn.InsertCollection(Identifier, documents);
+            }
+            catch(Exception e)
+            {
+                throw e;
+            }
+            finally
+            {
+                reader.Dispose();
+            }
+            Console.WriteLine("Parsing data of " + Identifier + " has done!");
         }
 
         [Obsolete]
