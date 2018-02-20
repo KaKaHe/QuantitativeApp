@@ -37,7 +37,9 @@ namespace EIAUpdater
             {
                 //If the manifest file is downloaded successfully, continue doing parsing.
                 List<FileSummary> dataList = eia.Parsing();
-                List<Task> taskList = new List<Task>();
+                List<Task> downloadlist = new List<Task>();
+                List<Task> operationList = new List<Task>();
+                int Count = 0;
 
                 foreach (FileSummary fs in dataList)
                 {
@@ -47,16 +49,37 @@ namespace EIAUpdater
                         string downloadedFile = "";
                         string extractedFile = "";
                         Task download = Task.Factory.StartNew(() => downloadedFile = handler.Download(Path.Combine(eia.LocalFolder, fs.identifier)));
-                        //Task extract = new Task(() => eia.UnZipping(str, Path.Combine(eia.LocalFolder, fs.identifier)));
-                        Task extract = download.ContinueWith((v) => extractedFile = eia.UnZipping(downloadedFile, Path.Combine(eia.LocalFolder, fs.identifier)));
-                        Task dataparse = extract.ContinueWith((v) => eia.ParsingData(extractedFile, fs.identifier));
-                        //taskList.Add(Task.Factory.StartNew(() => handler.Download(Path.Combine(eia.LocalFolder, fs.identifier))));
-                        //Task s = Task.Run(() => eia.DataDownload(fs));
-                        //result = s.IsCompleted | s.IsCompleted;
-                        //taskList.Add(s);
-                        taskList.Add(download);
-                        taskList.Add(extract);
-                        taskList.Add(dataparse);
+                        if (!downloadedFile.Equals("Failed"))
+                        {
+                            //Task extract = new Task(() => eia.UnZipping(str, Path.Combine(eia.LocalFolder, fs.identifier)));
+                            Task extract = download.ContinueWith((v) => extractedFile = eia.UnZipping(downloadedFile, Path.Combine(eia.LocalFolder, fs.identifier)));
+                            Task dataparse = extract.ContinueWith((v) => eia.ParsingData(extractedFile, fs.identifier));
+
+                            //taskList.Add(Task.Factory.StartNew(() => handler.Download(Path.Combine(eia.LocalFolder, fs.identifier))));
+                            //Task s = Task.Run(() => eia.DataDownload(fs));
+                            //result = s.IsCompleted | s.IsCompleted;
+                            //taskList.Add(s);
+                            downloadlist.Add(download);
+                            operationList.Add(extract);
+                            operationList.Add(dataparse);
+                        }
+                        
+                        if (downloadlist.Count >= 3)
+                        {
+                            int index = Task.WaitAny(downloadlist.ToArray());
+                            downloadlist.Remove(Task.CompletedTask);
+                        }
+
+                        if(operationList.Count>=5)
+                        {
+                            Task.WaitAny(operationList.ToArray());
+                            operationList.Remove(Task.CompletedTask);
+                        }
+                        if (Count++ % 3 == 0)
+                        {
+                            Task.WaitAll(downloadlist.ToArray());
+                            downloadlist.Clear();
+                        }
                     }
                     catch(Exception e)
                     {
@@ -65,7 +88,7 @@ namespace EIAUpdater
                     //Console.WriteLine(s.IsCompleted);
                 }
 
-                Task.WaitAll(taskList.ToArray());
+                Task.WaitAll(operationList.ToArray());
                 //Task t = Task.Run(() => eia.DataDownload(dataList));
                 //t.Wait();
 
@@ -290,15 +313,19 @@ namespace EIAUpdater
 
         private string UnZipping(string zipFile, string extractFolder)
         {
-            Console.WriteLine("start constrating:" + zipFile);
+            Console.WriteLine("Start extracting:" + zipFile);
             //System.IO.Compression.
             try
             {
                 ZipFile.ExtractToDirectory(zipFile, extractFolder);
 
                 string[] extracted = Directory.GetFiles(extractFolder, "*.txt");
-                File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
+                Uri uri = new Uri(zipFile);
+                string strArchive = Path.Combine(new string[] { extractFolder, "Archive", uri.Segments.GetValue(uri.Segments.Length - 1).ToString().Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip") });
+                File.Move(zipFile, strArchive);
+                //File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
 
+                Console.WriteLine("Finish extracting:" + zipFile);
                 return extracted[0];
             }
             catch(Exception e)
@@ -309,24 +336,32 @@ namespace EIAUpdater
 
         private void ParsingData(string DataFile, string Identifier)
         {
-            Console.WriteLine("strat parsing data of " + DataFile);
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss")+ "|Start parsing data of " + DataFile);
+            int Count = 0;
             List<BsonDocument> documents = new List<BsonDocument>();
             StreamReader reader = new StreamReader(DataFile);
             try
             {
-                string str = reader.ReadLine();
-                while (true)
-                {
-                    var obj = JsonConvert.DeserializeObject(str);
-                    documents.Add(BsonDocument.Parse(str));
-                    str = reader.ReadLine();
-                    if (string.IsNullOrEmpty(str))
-                    {
-                        break;
-                    }
-                }
+                string str = "";
                 MongoAgent conn = getConn();
-                conn.InsertCollection(Identifier, documents);
+                while (!reader.EndOfStream)
+                {
+                    str = reader.ReadLine();
+                    JObject obj = (JObject)JsonConvert.DeserializeObject(str);
+                    BsonDocument bdoc = BsonDocument.Parse(str);
+                    //conn.InsertCollection(Identifier, bdoc);
+                    documents.Add(bdoc);
+
+                    if (documents.Count == 1000)
+                    {
+                        conn.InsertCollection(Identifier, documents);
+                        documents.Clear();
+                    }
+
+                    Count++;
+                }
+                if (documents.Count > 0)
+                    conn.InsertCollection(Identifier, documents);
             }
             catch(Exception e)
             {
@@ -336,7 +371,7 @@ namespace EIAUpdater
             {
                 reader.Dispose();
             }
-            Console.WriteLine("Parsing data of " + Identifier + " has done!");
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Parsing " + Count + " sets of data of " + Identifier + " has done!");
         }
 
         [Obsolete]

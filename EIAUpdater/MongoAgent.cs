@@ -162,6 +162,14 @@ namespace EIAUpdater
             releaseCollection();
         }
 
+        public void UpsertCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions option = null)
+        {
+            getCollection(strCollection);
+            option = new UpdateOptions { IsUpsert = true };
+            collection.ReplaceOne(query, document, option);
+            releaseCollection();
+        }
+
         public async void ReplaceCollectionAsync(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
         {
             getCollection(strCollection);

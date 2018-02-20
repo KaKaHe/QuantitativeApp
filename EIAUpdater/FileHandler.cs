@@ -21,7 +21,7 @@ namespace EIAUpdater
 
         public string Download(string strLocalPath)
         {
-            Console.WriteLine("Strating " + strLocalPath);
+            Console.WriteLine("Start downloading " + strLocalPath);
             WebClient client = null;
             try
             {
@@ -30,6 +30,7 @@ namespace EIAUpdater
                     if (!Directory.Exists(strLocalPath))
                     {
                         Directory.CreateDirectory(strLocalPath);
+                        Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
                     }
                     string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
                     //client.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCallback);
@@ -40,12 +41,13 @@ namespace EIAUpdater
             }
             catch (WebException we)
             {
-                throw we;
+                Console.WriteLine(we.Message);
+                return "Failed";
             }
             finally
             {
                 client.Dispose();
-                Console.WriteLine("End " + strLocalPath);
+                Console.WriteLine("Finish downloading " + strLocalPath);
             }
             //Task<string> t = new Task<string>(() => { return "Done"; });
             //string a = "done";
