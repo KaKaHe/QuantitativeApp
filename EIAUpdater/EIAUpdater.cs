@@ -1,33 +1,32 @@
-﻿using System;
-using System.Net;
-using System.IO;
-using System.IO.Compression;
-using System.ComponentModel;
-using System.Threading.Tasks;
-using MongoDB.Driver;
+﻿using EIAUpdater.Model;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Bson;
+using System;
 using System.Collections.Generic;
-using EIAUpdater.Model;
+using System.IO;
+using System.IO.Compression;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace EIAUpdater
 {
     class EIAUpdater
     {
-        private string MongoDB = "Quantitative";
-        private string ManifestCollection = "EIA_Manifest";
-        private string MongoHost = "localhost";
-        private int MongoDBPort = 27017;
-        private string Manifest = "http://api.eia.gov/bulk/manifest.txt";
-        private string LocalFolder = "C:\\Quantitative_Finance\\DataGrabing";
-        private string LocalFileName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
+        public string MongoDB = "";
+        public string ManifestCollection = "";
+        public string MongoHost = "";
+        public int MongoDBPort = 27017;
+        public string UserName = "";
+        public string Password = "";
+        public string Manifest = "http://api.eia.gov/bulk/manifest.txt";
+        public string LocalFolder = "C:\\Quantitative_Finance\\DataGrabing";
+        public string LocalFileName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
         //public event AsyncCompletedEventHandler DownloadCompleted;
         static void Main(string[] args)
         {
-            //Console.WriteLine("Hello World!");
             //EIAUpdater eia = new EIAUpdater();
             EIAUpdater eia = Initializer();
             //ObjectId id = new ObjectId(DateTime.UtcNow, Environment.MachineName.GetHashCode()/100, (short)System.Diagnostics.Process.GetCurrentProcess().Id, 1);
@@ -93,20 +92,6 @@ namespace EIAUpdater
                 //t.Wait();
 
                 Console.WriteLine("all Done");
-                //foreach (FileSummary fs in dataList)
-                //{
-                //    try
-                //    {
-                //        //Start downloading files that have update.
-                //        FileHandler handler = new FileHandler(fs.accessURL);
-                //        //handler.Download(eia.LocalFolder + "\\" + fs.identifier);
-                //        handler.Download(Path.Combine(eia.LocalFolder, fs.identifier));
-                //    }
-                //    catch(Exception e)
-                //    {
-                //        Console.WriteLine(e.Message);
-                //    }
-                //}
 
                 //If there is no update, stop application.
                 Console.ReadLine();
@@ -116,8 +101,6 @@ namespace EIAUpdater
             {
                 //If the mainfest file downloaded failed, do something else other than parsing.
             }
-            //Console.ReadLine();
-            //Console.ReadLine();
         }
 
         private static EIAUpdater Initializer()
@@ -129,10 +112,6 @@ namespace EIAUpdater
 
         private bool GetManifest()
         {
-            //string strURL = "http://api.eia.gov/bulk/manifest.txt";
-            //string strLocation = "C:\\Quantitative_Finance\\DataGrabing\\";
-            //string strLocalName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
-
             //Console.WriteLine("Current location: " + System.IO.Directory.GetCurrentDirectory().ToString());
             using (var client = new WebClient())
             {
@@ -156,94 +135,6 @@ namespace EIAUpdater
                 }
             }
             return true;
-        }
-
-        //private Task DataDownload(FileSummary fs)
-        //{
-        //    try
-        //    {
-        //        //Start downloading files that have update.
-        //        FileHandler handler = new FileHandler(fs.accessURL);
-        //        //handler.Download(eia.LocalFolder + "\\" + fs.identifier);
-        //        string strResult = handler.DownloadAsync(Path.Combine(LocalFolder, fs.identifier));
-
-        //        if(strResult.Equals("Done"))
-        //        {
-        //            return;
-        //        }
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Console.WriteLine(e.Message);
-        //    }
-        //    return;
-        //}
-
-        //private void DataDownload(List<FileSummary> list)
-        //{
-        //    List<string> taskList = new List<string>();
-        //    foreach (FileSummary fs in list)
-        //    {
-        //        try
-        //        {
-
-        //            //Start downloading files that have update.
-        //            //FileHandler handler = new FileHandler(fs.accessURL);
-        //            ////handler.Download(eia.LocalFolder + "\\" + fs.identifier);
-        //            //Console.WriteLine("Starting " + fs.identifier);
-        //            //string result = await handler.Download(Path.Combine(LocalFolder, fs.identifier));
-        //            ////string a = await result;
-        //            //Console.WriteLine("End " + fs.identifier);
-        //            //taskList.Add(result);
-        //            Task<string> re = d(fs);
-        //            taskList.Add(re.Result);
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            Console.WriteLine(e.Message);
-        //        }
-        //    }
-        //    //await taskList;
-        //    foreach(string a in taskList)
-        //    {
-        //        Console.WriteLine(a);
-        //    }
-
-        //    //return;
-        //}
-
-        //private async Task<string> d(FileSummary fs)
-        //{
-        //    FileHandler handler = new FileHandler(fs.accessURL);
-        //    Console.WriteLine("Starting " + fs.identifier);
-        //    string result = handler.Download(Path.Combine(LocalFolder, fs.identifier));
-        //    //string a = await result;
-        //    Console.WriteLine("End " + fs.identifier);
-        //    return result;
-        //    //taskList.Add(result);
-        //}
-
-        [Obsolete]
-        private void logManifest()
-        {
-            MongoClientSettings clientSettings = new MongoClientSettings
-            {
-                Server = new MongoServerAddress("localhost", 27017),
-                UseSsl = false
-            };
-            MongoAgent ma = MongoAgent.getInstance(clientSettings);
-            ma.setDatabase("Quantitative");
-            //ma.setCollection("EIA_Manifest");
-            //var jsonStr = Parsing();
-            List<FileSummary> list = Parsing();
-
-            foreach (FileSummary fs in list)
-            {
-            }
-
-            //var document = new BsonDocument(jsonStr);
-            //ma.insertCollection("EIA_Manifest", Parsing());
-            //ma.readCollection("EIA_Manifest");
         }
 
         private List<FileSummary> Parsing()
@@ -301,12 +192,18 @@ namespace EIAUpdater
 
         private MongoAgent getConn()
         {
+            //var a = MongoUrl.Create("mongodb://[hejia:Hejia_68425291]@localhost:27017/admin").DatabaseName;
+            MongoCredential credential = MongoCredential.CreateCredential("admin", UserName, Password);
             MongoClientSettings clientSettings = new MongoClientSettings
             {
                 Server = new MongoServerAddress(MongoHost, MongoDBPort),
+                Credential = credential,
+                //ConnectTimeout = new TimeSpan(0, 1, 0),
+                //SocketTimeout = new TimeSpan(0, 1, 0),
                 UseSsl = false
             };
             MongoAgent ma = MongoAgent.getInstance(clientSettings);
+            //MongoAgent ma = MongoAgent.getInstance("mongodb://hejia:Hejia_68425291@localhost:27017/admin");
             ma.setDatabase(MongoDB);
             return ma;
         }
@@ -370,15 +267,10 @@ namespace EIAUpdater
             finally
             {
                 reader.Dispose();
+                File.Delete(DataFile);
             }
             Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Parsing " + Count + " sets of data of " + Identifier + " has done!");
         }
 
-        [Obsolete]
-        private ObjectId getObjectId(ObjectId oldone)
-        {
-            TimeSpan increment = DateTime.Now - oldone.CreationTime;
-            return new ObjectId(oldone.CreationTime, Environment.MachineName.GetHashCode() / 100, (short)System.Diagnostics.Process.GetCurrentProcess().Id, increment.Milliseconds);
-        }
     }
 }

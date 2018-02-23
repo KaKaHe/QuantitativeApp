@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MongoDB.Bson;
 using MongoDB.Driver;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using Newtonsoft.Json;
-using System.Linq;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Bson;
-using System.IO;
-using EIAUpdater.Model;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace EIAUpdater
 {
@@ -26,12 +20,25 @@ namespace EIAUpdater
             client = new MongoClient(mcs);
         }
 
+        private MongoAgent(string strConn)
+        {
+            client = new MongoClient(strConn);
+        }
+
         public static MongoAgent getInstance(MongoClientSettings clientSettings)
         {
             if (instance == null)
                 instance = new MongoAgent(clientSettings);
             return instance;
         }
+
+        public static MongoAgent getInstance(string strConn)
+        {
+            if (instance == null)
+                instance = new MongoAgent(strConn);
+            return instance;
+        }
+
         //private IMongoDatabase imd = null;
         public void setDatabase(string strDB)
         {
@@ -41,6 +48,7 @@ namespace EIAUpdater
 
         private void getCollection(string strCollection)
         {
+            //database = client.GetDatabase("Quantitative");
             collection = database.GetCollection<BsonDocument>(strCollection);
             if (collection == null)
             {
@@ -79,16 +87,16 @@ namespace EIAUpdater
         public void insertCollection(string strCollection, JToken token)
         {
             //collection = database.GetCollection<BsonDocument>(strCollection);
-            getCollection(strCollection);
+            //getCollection(strCollection);
             //strData = strData.Substring(11, strData.Length - 14);
             //BsonDocument bd = BsonDocument.Parse(strData);
             //string strData = token.ToString().Replace("AEO.", "AEO-");
             //string strData = encodeDotDollar(token.ToString());
-            string strData = token.First.ToString();
+            //string strData = token.First.ToString();
             //JObject obj = (JObject)JToken.ReadFrom(new JsonTextReader(new StringReader(token.ToString())));
             //strData = "{" + strData + "}";
             //BsonDocument bson = token.ToBsonDocument();
-            BsonDocument bson = BsonDocument.Parse(strData);
+            //BsonDocument bson = BsonDocument.Parse(strData);
             //JsonConvert.SerializeObject(token.ToJson());
             //BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(token.ToString()));
             //BsonDocument bd = null;
@@ -106,8 +114,8 @@ namespace EIAUpdater
 
             //BsonDocument doc = BsonSerializer.Deserialize<BsonDocument>(b);
 
-            collection.InsertOne(bson);
-            releaseCollection();
+            //collection.InsertOne(bson);
+            //releaseCollection();
         }
 
         public List<BsonDocument> readCollection(string strCollection)
@@ -133,10 +141,10 @@ namespace EIAUpdater
 
         public List<BsonDocument> readCollection(string strCollection, BsonDocument document, FindOptions options = null)
         {
-            getCollection(strCollection);
-            var myObj = collection.Find(document, options).ToCursor();
+            collection = database.GetCollection<BsonDocument>(strCollection);
+            IFindFluent<BsonDocument,BsonDocument> obj= collection.Find(document, options);
             releaseCollection();
-            return myObj.ToList();
+            return obj.ToList();
         }
 
         public async void UpdateCollectionAsync(string strCollection, BsonDocument filter, BsonDocument document, UpdateOptions options = null)

@@ -1,10 +1,7 @@
-﻿using System.IO;
-using System.Collections.Generic;
-using System;
-using System.Net;
+﻿using System;
 using System.ComponentModel;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using System.Net;
 
 namespace EIAUpdater
 {
@@ -52,13 +49,6 @@ namespace EIAUpdater
             //Task<string> t = new Task<string>(() => { return "Done"; });
             //string a = "done";
             //return t;
-        }
-
-        [Obsolete]
-        public async Task<string> DownloadAsync(string strLocalPath)
-        {
-            await Task.Run(() => Download(strLocalPath));
-            return "Done";
         }
 
         public void DownloadCallback(object sender, AsyncCompletedEventArgs e)

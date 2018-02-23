@@ -1,8 +1,10 @@
 ﻿{
   "Manifest": "http://api.eia.gov/bulk/manifest.txt",
-  "LocalFolder": "C:\\Quantitative_Finance\\DataGrabing\\",
-  "MongoHost": "localhost",
-  "MongoDB": "Quatitative",
-  "MongoDBPort": 27017,
-  "ManifestCollection": "EIA_Manifest"
+  "LocalFolder": "C:\\DataGrabing\\",
+  "MongoHost": "dds-2ev3b27bd5231d041447-pub.mongodb.rds.aliyuncs.com",
+  "MongoDB": "Quantitative",
+  "MongoDBPort": 3717,
+  "ManifestCollection": "EIA_Manifest",
+  "UserName": "root",
+  "Password": "Hejia_68425291"
 }
