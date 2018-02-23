@@ -51,10 +51,10 @@ namespace EIAUpdater
             //return t;
         }
 
-        public void DownloadCallback(object sender, AsyncCompletedEventArgs e)
-        {
-            Console.WriteLine("Downloading completed.");
-            Directory.CreateDirectory("C:\\Quantitative_Finance\\DataGrabing\\Completed");
-        }
+        //public void DownloadCallback(object sender, AsyncCompletedEventArgs e)
+        //{
+        //    Console.WriteLine("Downloading completed.");
+        //    Directory.CreateDirectory("C:\\Quantitative_Finance\\DataGrabing\\Completed");
+        //}
     }
 }
