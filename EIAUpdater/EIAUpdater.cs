@@ -22,7 +22,7 @@ namespace EIAUpdater
         public string UserName = "";
         public string Password = "";
         public string Manifest = "http://api.eia.gov/bulk/manifest.txt";
-        public string LocalFolder = "C:\\Quantitative_Finance\\DataGrabing";
+        public string LocalFolder = "C:\\DataGrabing";
         public string LocalFileName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
         //public event AsyncCompletedEventHandler DownloadCompleted;
         static void Main(string[] args)
