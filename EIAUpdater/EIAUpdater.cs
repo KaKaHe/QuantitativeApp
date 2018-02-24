@@ -18,7 +18,7 @@ namespace EIAUpdater
         public string MongoDB = "";
         public string ManifestCollection = "";
         public string MongoHost = "";
-        public int MongoDBPort = 27017;
+        public int MongoDBPort = 3717;
         public string UserName = "";
         public string Password = "";
         public string Manifest = "http://api.eia.gov/bulk/manifest.txt";
