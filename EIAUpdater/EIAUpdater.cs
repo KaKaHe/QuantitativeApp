@@ -27,10 +27,7 @@ namespace EIAUpdater
         //public event AsyncCompletedEventHandler DownloadCompleted;
         static void Main(string[] args)
         {
-            //EIAUpdater eia = new EIAUpdater();
             EIAUpdater eia = Initializer();
-            //ObjectId id = new ObjectId(DateTime.UtcNow, Environment.MachineName.GetHashCode()/100, (short)System.Diagnostics.Process.GetCurrentProcess().Id, 1);
-            //ObjectId id = cd.getObjectId(new ObjectId("5a808a103c99832c2c4fd3a7"));
 
             if (eia.GetManifest())
             {
@@ -94,7 +91,7 @@ namespace EIAUpdater
                 Console.WriteLine("all Done");
 
                 //If there is no update, stop application.
-                Console.ReadLine();
+                //Console.ReadLine();
                 //Console.ReadLine();
             }
             else
@@ -112,6 +109,7 @@ namespace EIAUpdater
 
         private bool GetManifest()
         {
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start getting today's manifest");
             //Console.WriteLine("Current location: " + System.IO.Directory.GetCurrentDirectory().ToString());
             using (var client = new WebClient())
             {
@@ -119,6 +117,12 @@ namespace EIAUpdater
                 {
                     //client.DownloadFile(Manifest, LocalFolder);
                     string strLocalName = Path.Combine(LocalFolder, LocalFileName);
+                    //If DataGrabing folder doesn't exist, create it.
+                    if (!Directory.Exists(LocalFolder))
+                    {
+                        Directory.CreateDirectory(LocalFolder);
+                    }
+
                     if (!File.Exists(strLocalName))
                     {
                         client.DownloadFile(Manifest, strLocalName);
@@ -127,6 +131,11 @@ namespace EIAUpdater
                 catch (WebException we)
                 {
                     Console.WriteLine(we.Message.ToString());
+                    return false;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message.ToString());
                     return false;
                 }
                 finally
@@ -139,9 +148,9 @@ namespace EIAUpdater
 
         private List<FileSummary> Parsing()
         {
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start parsing today's manifest");
             List<FileSummary> summary = new List<FileSummary>();
             MongoAgent conn = getConn();
-            //string strManifest = "C:\\Quantitative_Finance\\DataGrabing\\manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
 
             StreamReader sr = new StreamReader(Path.Combine(LocalFolder, LocalFileName));
             JObject jsonStr = JObject.Parse(sr.ReadToEnd());
@@ -175,25 +184,22 @@ namespace EIAUpdater
                         //update performing.
                         query = new BsonDocument("_id", old._id);
                         BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(fs));
-                        //doc.SetElement(new BsonElement("_id", getObjectId(old._id)));
                         doc.SetElement(new BsonElement("_id", old._id));
                         //conn.replaceCollection(ManifestCollection, query, doc);
                         conn.UpdateCollectionAsync(ManifestCollection, query, doc);
                     }
                 }
-
-                //summary.Add(fs);
-
-                //conn.insertCollection("EIA_Manifest", token);
             }
 
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish parsing today's manifest");
             return summary;
         }
 
         private MongoAgent getConn()
         {
             //var a = MongoUrl.Create("mongodb://[hejia:Hejia_68425291]@localhost:27017/admin").DatabaseName;
-            MongoCredential credential = MongoCredential.CreateCredential("admin", UserName, Password);
+            //MongoCredential credential = MongoCredential.CreateCredential("admin", UserName, Password);
+            MongoCredential credential = MongoCredential.CreateCredential(MongoDB, UserName, Password);
             MongoClientSettings clientSettings = new MongoClientSettings
             {
                 Server = new MongoServerAddress(MongoHost, MongoDBPort),
@@ -210,8 +216,8 @@ namespace EIAUpdater
 
         private string UnZipping(string zipFile, string extractFolder)
         {
-            Console.WriteLine("Start extracting:" + zipFile);
-            //System.IO.Compression.
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start extracting:" + zipFile);
+
             try
             {
                 ZipFile.ExtractToDirectory(zipFile, extractFolder);
@@ -222,7 +228,7 @@ namespace EIAUpdater
                 File.Move(zipFile, strArchive);
                 //File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
 
-                Console.WriteLine("Finish extracting:" + zipFile);
+                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish extracting:" + zipFile);
                 return extracted[0];
             }
             catch(Exception e)
