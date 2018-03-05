@@ -2,6 +2,8 @@
 using System.ComponentModel;
 using System.IO;
 using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace EIAUpdater
 {
@@ -16,10 +18,11 @@ namespace EIAUpdater
             LocalFileName = FileURL.Substring(strPath.LastIndexOf("/") + 1);
         }
 
-        public string Download(string strLocalPath)
+        public string DownloadWebClient(string strLocalPath)
         {
-            Console.WriteLine("Start downloading " + strLocalPath);
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + strLocalPath);
             WebClient client = null;
+            
             try
             {
                 using (client = new WebClient())
@@ -41,6 +44,11 @@ namespace EIAUpdater
                 Console.WriteLine(we.Message);
                 return "Failed";
             }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+                return "Failed";
+            }
             finally
             {
                 client.Dispose();
@@ -49,6 +57,50 @@ namespace EIAUpdater
             //Task<string> t = new Task<string>(() => { return "Done"; });
             //string a = "done";
             //return t;
+        }
+
+        public string DownloadHTTPClient(string strLocalPath)
+        {
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + strLocalPath);
+            HttpClient client = null;
+            FileStream stream = null;
+
+            try
+            {
+                using (client = new HttpClient())
+                {
+                    if (!Directory.Exists(strLocalPath))
+                    {
+                        Directory.CreateDirectory(strLocalPath);
+                        Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
+                    }
+                    string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
+                    
+                    HttpContent content = client.GetAsync(FileURL).Result.Content;
+                    stream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
+                    content.CopyToAsync(stream);
+                    content.Dispose();
+                }
+                return Path.Combine(strLocalPath, LocalFileName);
+            }
+            catch (WebException we)
+            {
+                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
+                Console.WriteLine(we.Message);
+                return "Failed";
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
+                Console.WriteLine(e);
+                return "Failed";
+            }
+            finally
+            {
+                client.Dispose();
+                stream.Close();
+                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish downloading " + strLocalPath);
+            }
         }
 
         //public void DownloadCallback(object sender, AsyncCompletedEventArgs e)

@@ -33,60 +33,28 @@ namespace EIAUpdater
             {
                 //If the manifest file is downloaded successfully, continue doing parsing.
                 List<FileSummary> dataList = eia.Parsing();
-                List<Task> downloadlist = new List<Task>();
-                List<Task> operationList = new List<Task>();
-                int Count = 0;
+                List<Task> processList = new List<Task>();
 
                 foreach (FileSummary fs in dataList)
                 {
                     try
                     {
-                        FileHandler handler = new FileHandler(fs.accessURL);
-                        string downloadedFile = "";
-                        string extractedFile = "";
-                        Task download = Task.Factory.StartNew(() => downloadedFile = handler.Download(Path.Combine(eia.LocalFolder, fs.identifier)));
-                        if (!downloadedFile.Equals("Failed"))
-                        {
-                            //Task extract = new Task(() => eia.UnZipping(str, Path.Combine(eia.LocalFolder, fs.identifier)));
-                            Task extract = download.ContinueWith((v) => extractedFile = eia.UnZipping(downloadedFile, Path.Combine(eia.LocalFolder, fs.identifier)));
-                            Task dataparse = extract.ContinueWith((v) => eia.ParsingData(extractedFile, fs.identifier));
+                        Task process = Task.Factory.StartNew(() => eia.ProcessDataFiles(fs));
+                        processList.Add(process);
 
-                            //taskList.Add(Task.Factory.StartNew(() => handler.Download(Path.Combine(eia.LocalFolder, fs.identifier))));
-                            //Task s = Task.Run(() => eia.DataDownload(fs));
-                            //result = s.IsCompleted | s.IsCompleted;
-                            //taskList.Add(s);
-                            downloadlist.Add(download);
-                            operationList.Add(extract);
-                            operationList.Add(dataparse);
-                        }
-                        
-                        if (downloadlist.Count >= 3)
+                        if (processList.Count >= 3)
                         {
-                            int index = Task.WaitAny(downloadlist.ToArray());
-                            downloadlist.Remove(Task.CompletedTask);
-                        }
-
-                        if(operationList.Count>=5)
-                        {
-                            Task.WaitAny(operationList.ToArray());
-                            operationList.Remove(Task.CompletedTask);
-                        }
-                        if (Count++ % 3 == 0)
-                        {
-                            Task.WaitAll(downloadlist.ToArray());
-                            downloadlist.Clear();
+                            Task.WaitAny(processList.ToArray());
+                            processList.Remove(Task.CompletedTask);
                         }
                     }
                     catch(Exception e)
                     {
                         Console.WriteLine(e.Message);
                     }
-                    //Console.WriteLine(s.IsCompleted);
                 }
 
-                Task.WaitAll(operationList.ToArray());
-                //Task t = Task.Run(() => eia.DataDownload(dataList));
-                //t.Wait();
+                Task.WaitAll(processList.ToArray());
 
                 Console.WriteLine("all Done");
 
@@ -214,12 +182,37 @@ namespace EIAUpdater
             return ma;
         }
 
+        private void ProcessDataFiles(FileSummary fs)
+        {
+            try
+            {
+                FileHandler handler = new FileHandler(fs.accessURL);
+                string downloadedfile = handler.DownloadHTTPClient(Path.Combine(LocalFolder, fs.identifier));
+
+                if (!String.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
+                {
+                    System.Threading.Thread.Sleep(5000);
+                    string extractedFile = UnZipping(downloadedfile, Path.Combine(LocalFolder, fs.identifier));
+
+                    if (!String.IsNullOrEmpty(extractedFile))
+                    {
+                        ParsingData(extractedFile, fs.identifier);
+                    }
+                }
+            }
+            catch(Exception E)
+            {
+                throw E;
+            }
+        }
+
         private string UnZipping(string zipFile, string extractFolder)
         {
             Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start extracting:" + zipFile);
 
             try
             {
+                File.GetAccessControl(zipFile);
                 ZipFile.ExtractToDirectory(zipFile, extractFolder);
 
                 string[] extracted = Directory.GetFiles(extractFolder, "*.txt");
@@ -268,6 +261,8 @@ namespace EIAUpdater
             }
             catch(Exception e)
             {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e);
                 throw e;
             }
             finally
