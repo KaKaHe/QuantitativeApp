@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using log4net;
 
 namespace EIAUpdater
 {
@@ -12,6 +13,7 @@ namespace EIAUpdater
         private string FileURL;
         private string LocalFileName;
         //public event AsyncCompletedEventHandler DownloadCallback;
+        public static ILog logger = LogManager.GetLogger(typeof(FileHandler));
         public FileHandler(string strPath)
         {
             FileURL = strPath;
@@ -61,7 +63,8 @@ namespace EIAUpdater
 
         public string DownloadHTTPClient(string strLocalPath)
         {
-            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + strLocalPath);
+            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + FileURL + " to " + strLocalPath);
+            logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
             HttpClient client = null;
             FileStream stream = null;
 
@@ -85,21 +88,24 @@ namespace EIAUpdater
             }
             catch (WebException we)
             {
-                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
-                Console.WriteLine(we.Message);
+                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
+                //Console.WriteLine(we.Message);
+                logger.Error(we.Message, we);
                 return "Failed";
             }
             catch (Exception e)
             {
-                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
-                Console.WriteLine(e);
+                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
+                //Console.WriteLine(e);
+                logger.Error(e.Message, e);
                 return "Failed";
             }
             finally
             {
                 client.Dispose();
                 stream.Close();
-                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish downloading " + strLocalPath);
+                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish downloading " + LocalFileName);
+                logger.Info("Finish downloading " + LocalFileName);
             }
         }
 
