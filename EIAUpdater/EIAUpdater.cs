@@ -156,7 +156,7 @@ namespace EIAUpdater
 
                 //Compare with the last record to decide if it needs to be download today.
                 BsonDocument query = new BsonDocument("identifier", fs.identifier);
-                List<BsonDocument> list = conn.readCollection(ManifestCollection, query);
+                List<BsonDocument> list = conn.ReadCollection(ManifestCollection, query);
                 if (list.Count == 0)
                 {
                     //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
@@ -199,9 +199,9 @@ namespace EIAUpdater
                 //SocketTimeout = new TimeSpan(0, 1, 0),
                 UseSsl = false
             };
-            MongoAgent ma = MongoAgent.getInstance(clientSettings);
+            MongoAgent ma = MongoAgent.GetInstance(clientSettings);
             //MongoAgent ma = MongoAgent.getInstance("mongodb://hejia:Hejia_68425291@localhost:27017/admin");
-            ma.setDatabase(MongoDB);
+            ma.SetDatabase(MongoDB);
             return ma;
         }
 
@@ -211,7 +211,9 @@ namespace EIAUpdater
             {
                 logger.Info("Task " + fs.identifier + " start.");
                 FileHandler handler = new FileHandler(fs.accessURL);
-                string downloadedfile = handler.DownloadHTTPClient(Path.Combine(LocalFolder, fs.identifier));
+                //string downloadedfile = handler.DownloadHTTPClient(Path.Combine(LocalFolder, fs.identifier));
+                //string downloadedfile = handler.DownloadWebClient(Path.Combine(LocalFolder, fs.identifier));
+                string downloadedfile = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
 
                 if (!String.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
                 {
@@ -232,6 +234,9 @@ namespace EIAUpdater
             }
         }
 
+        /*
+         * 
+         */
         private void ProcessDataFiles(FileSummary fs, string downloadedfile)
         {
             try
@@ -286,6 +291,7 @@ namespace EIAUpdater
         {
             //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss")+ "|Start parsing data of " + DataFile);
             logger.Info("Strat parsing data of " + Identifier);
+            int BatchSize = Identifier.Equals("EBA") ? 100 : 1000;
             int Count = 0;
             List<BsonDocument> documents = new List<BsonDocument>();
             StreamReader reader = new StreamReader(DataFile);
@@ -301,7 +307,7 @@ namespace EIAUpdater
                     //conn.InsertCollection(Identifier, bdoc);
                     documents.Add(bdoc);
 
-                    if (documents.Count == 1000)
+                    if (documents.Count == BatchSize)
                     {
                         conn.InsertCollection(Identifier, documents);
                         documents.Clear();

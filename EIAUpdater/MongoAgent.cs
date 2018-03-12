@@ -13,7 +13,6 @@ namespace EIAUpdater
         private static MongoClient client = null;
         private static IMongoDatabase database = null;
         private static IMongoCollection<BsonDocument> collection = null;
-        //private enum UPDATETYPE{}
 
         private MongoAgent(MongoClientSettings mcs)
         {
@@ -25,14 +24,14 @@ namespace EIAUpdater
             client = new MongoClient(strConn);
         }
 
-        public static MongoAgent getInstance(MongoClientSettings clientSettings)
+        public static MongoAgent GetInstance(MongoClientSettings clientSettings)
         {
             if (instance == null)
                 instance = new MongoAgent(clientSettings);
             return instance;
         }
 
-        public static MongoAgent getInstance(string strConn)
+        public static MongoAgent GetInstance(string strConn)
         {
             if (instance == null)
                 instance = new MongoAgent(strConn);
@@ -40,13 +39,13 @@ namespace EIAUpdater
         }
 
         //private IMongoDatabase imd = null;
-        public void setDatabase(string strDB)
+        public void SetDatabase(string strDB)
         {
             database = client.GetDatabase(strDB);
             //collection = database.GetCollection<BsonDocument>("");
         }
 
-        private void getCollection(string strCollection)
+        private void GetCollection(string strCollection)
         {
             //database = client.GetDatabase("Quantitative");
             collection = database.GetCollection<BsonDocument>(strCollection);
@@ -57,32 +56,33 @@ namespace EIAUpdater
             }
         }
 
-        private void releaseCollection()
+        private void ReleaseCollection()
         {
             collection = null;
         }
 
         public void InsertCollection(string strCollection, BsonDocument bsonDocument)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             collection.InsertOne(bsonDocument);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public async void InsertCollectionAsync(string strCollection, BsonDocument bsonDocument)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             await collection.InsertOneAsync(bsonDocument);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public void InsertCollection(string strCollection, List<BsonDocument> bsonDocument)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             collection.InsertMany(bsonDocument);
-            releaseCollection();
+            ReleaseCollection();
         }
 
+        /* Obsoleted function
         [Obsolete]
         public void insertCollection(string strCollection, JToken token)
         {
@@ -117,13 +117,14 @@ namespace EIAUpdater
             //collection.InsertOne(bson);
             //releaseCollection();
         }
+        */
 
-        public List<BsonDocument> readCollection(string strCollection)
+        public List<BsonDocument> ReadCollection(string strCollection)
         {
             //collection = database.GetCollection<BsonDocument>(strCollectionName);
-            getCollection(strCollection);
+            GetCollection(strCollection);
             var myObj = collection.Find(new BsonDocument()).ToCursor();
-            releaseCollection();
+            ReleaseCollection();
             //List<BsonDocument> list = myObj.ToList();
             return myObj.ToList();
 
@@ -139,53 +140,53 @@ namespace EIAUpdater
             //d2.ToString();
         }
 
-        public List<BsonDocument> readCollection(string strCollection, BsonDocument document, FindOptions options = null)
+        public List<BsonDocument> ReadCollection(string strCollection, BsonDocument document, FindOptions options = null)
         {
             collection = database.GetCollection<BsonDocument>(strCollection);
             IFindFluent<BsonDocument,BsonDocument> obj= collection.Find(document, options);
-            releaseCollection();
+            ReleaseCollection();
             return obj.ToList();
         }
 
         public async void UpdateCollectionAsync(string strCollection, BsonDocument filter, BsonDocument document, UpdateOptions options = null)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             BsonDocument bDoc = new BsonDocument("$set", document);
             await collection.UpdateOneAsync(filter, bDoc, options);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public void UpdateCollection(string strCollection, BsonDocument filter, BsonDocument document, UpdateOptions options = null)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             BsonDocument bDoc = new BsonDocument("$set", document);
             collection.UpdateOne(filter, bDoc, options);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public void ReplaceCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             collection.ReplaceOne(query, document, options);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public void UpsertCollection(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions option = null)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             option = new UpdateOptions { IsUpsert = true };
             collection.ReplaceOne(query, document, option);
-            releaseCollection();
+            ReleaseCollection();
         }
 
         public async void ReplaceCollectionAsync(string strCollection, BsonDocument query, BsonDocument document, UpdateOptions options = null)
         {
-            getCollection(strCollection);
+            GetCollection(strCollection);
             await collection.ReplaceOneAsync(query, document, options);
-            releaseCollection();
+            ReleaseCollection();
         }
 
-        public void deleteCollection()
+        public void DeleteCollection()
         {
 
         }

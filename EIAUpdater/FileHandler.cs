@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using log4net;
 
@@ -22,7 +23,7 @@ namespace EIAUpdater
 
         public string DownloadWebClient(string strLocalPath)
         {
-            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + strLocalPath);
+            logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
             WebClient client = null;
             
             try
@@ -35,35 +36,26 @@ namespace EIAUpdater
                         Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
                     }
                     string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
-                    //client.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCallback);
-                    //client.DownloadFileAsync(new Uri(FileURL), strLocalFile);
+                    //request.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCallback);
+                    //request.DownloadFileAsync(new Uri(FileURL), strLocalFile);
                     client.DownloadFile(FileURL, strLocalFile);
                 }
                 return Path.Combine(strLocalPath, LocalFileName);
             }
-            catch (WebException we)
-            {
-                Console.WriteLine(we.Message);
-                return "Failed";
-            }
             catch(Exception e)
             {
-                Console.WriteLine(e);
+                logger.Error(e.Message, e);
                 return "Failed";
             }
             finally
             {
                 client.Dispose();
-                Console.WriteLine("Finish downloading " + strLocalPath);
+                logger.Info("Finish downloading " + LocalFileName);
             }
-            //Task<string> t = new Task<string>(() => { return "Done"; });
-            //string a = "done";
-            //return t;
         }
 
         public string DownloadHTTPClient(string strLocalPath)
         {
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start downloading " + FileURL + " to " + strLocalPath);
             logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
             HttpClient client = null;
             FileStream stream = null;
@@ -79,24 +71,18 @@ namespace EIAUpdater
                     }
                     string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
                     
+                    logger.Info("Send HttpRequest");
                     HttpContent content = client.GetAsync(FileURL).Result.Content;
+                    logger.Info("Got HttpResponse content");
                     stream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
                     content.CopyToAsync(stream);
+                    logger.Info("Put them into Stream.");
                     content.Dispose();
                 }
                 return Path.Combine(strLocalPath, LocalFileName);
             }
-            catch (WebException we)
-            {
-                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
-                //Console.WriteLine(we.Message);
-                logger.Error(we.Message, we);
-                return "Failed";
-            }
             catch (Exception e)
             {
-                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
-                //Console.WriteLine(e);
                 logger.Error(e.Message, e);
                 return "Failed";
             }
@@ -104,15 +90,56 @@ namespace EIAUpdater
             {
                 client.Dispose();
                 stream.Close();
-                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish downloading " + LocalFileName);
                 logger.Info("Finish downloading " + LocalFileName);
             }
         }
+        
+        public string DownloadWebRequest(string strLocalPath)
+        {
+            logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(FileURL);
+            HttpWebResponse response = null;
+            FileStream filestream = null;
+            Stream stream = null;
+            try
+            {
+                if (!Directory.Exists(strLocalPath))
+                {
+                    Directory.CreateDirectory(strLocalPath);
+                    Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
+                }
+                string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
 
-        //public void DownloadCallback(object sender, AsyncCompletedEventArgs e)
-        //{
-        //    Console.WriteLine("Downloading completed.");
-        //    Directory.CreateDirectory("C:\\Quantitative_Finance\\DataGrabing\\Completed");
-        //}
+                using (response = (HttpWebResponse)request.GetResponse())
+                {
+                    //logger.Info("Send HttpRequest");
+                    using (stream = response.GetResponseStream())
+                    {
+                        byte[] buf = new byte[10240];
+                        int read = 0;
+                        filestream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
+                        while ((read=stream.Read(buf, 0, 10240))!=0)
+                        {
+                            filestream.Write(buf, 0, read);
+                        }
+                        //logger.Info("Put them into Stream.");
+                    }
+                }
+
+                    return Path.Combine(strLocalPath, LocalFileName);
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.Message, e);
+                return "Failed";
+            }
+            finally
+            {
+                response.Dispose();
+                response.Close();
+                filestream.Close();
+                logger.Info("Finish downloading " + LocalFileName);
+            }
+        }
     }
 }
