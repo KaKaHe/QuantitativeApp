@@ -94,8 +94,9 @@ namespace EIAUpdater
             }
         }
         
-        public string DownloadWebRequest(string strLocalPath)
+        public async Task<string> DownloadWebRequest(string strLocalPath)
         {
+            //System.Threading.Thread.Sleep(5000);
             logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(FileURL);
             HttpWebResponse response = null;
@@ -110,7 +111,8 @@ namespace EIAUpdater
                 }
                 string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
 
-                using (response = (HttpWebResponse)request.GetResponse())
+                //WebResponse s = await request.GetResponseAsync();
+                using (response = (HttpWebResponse) await request.GetResponseAsync())
                 {
                     //logger.Info("Send HttpRequest");
                     using (stream = response.GetResponseStream())

@@ -11,6 +11,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
 using log4net;
+using System.Text;
 
 namespace EIAUpdater
 {
@@ -61,21 +62,16 @@ namespace EIAUpdater
                         }
 
                         Task process = Task.Factory.StartNew(() => eia.ProcessDataFiles(fs));
-                        //string downloadedfile = string.Empty;
-                        //Task process = Task.Factory.StartNew(() => downloadedfile = handler.DownloadHTTPClient(Path.Combine(eia.LocalFolder, fs.identifier)));
-                        //Task parse = process.ContinueWith((a) => eia.ProcessDataFiles(fs, downloadedfile));
-                        //Console.WriteLine("new Task: " + process.Id.ToString());
                         processList.Add(process);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         Console.WriteLine(e.Message);
                     }
                 }
 
                 Task.WaitAll(processList.ToArray());
-
-                //Console.WriteLine("all Done");
+                
                 logger.Info("All updated data had been processed for today.");
 
                 //If there is no update, stop application.
@@ -85,6 +81,7 @@ namespace EIAUpdater
             else
             {
                 //If the mainfest file downloaded failed, do something else other than parsing.
+                logger.Error("Loading manifest failed of day " + DateTime.Now.ToString("yyyyMMdd"));
             }
         }
 
@@ -213,11 +210,12 @@ namespace EIAUpdater
                 FileHandler handler = new FileHandler(fs.accessURL);
                 //string downloadedfile = handler.DownloadHTTPClient(Path.Combine(LocalFolder, fs.identifier));
                 //string downloadedfile = handler.DownloadWebClient(Path.Combine(LocalFolder, fs.identifier));
-                string downloadedfile = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
+                //string downloadedfile =  handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
+                Task<string> task = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
+                string downloadedfile = task.Result;
 
                 if (!String.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
                 {
-                    //System.Threading.Thread.Sleep(5000);
                     string extractedFile = UnZipping(downloadedfile, Path.Combine(LocalFolder, fs.identifier));
 
                     if (!String.IsNullOrEmpty(extractedFile))
@@ -235,7 +233,7 @@ namespace EIAUpdater
         }
 
         /*
-         * 
+         * No downloading
          */
         private void ProcessDataFiles(FileSummary fs, string downloadedfile)
         {
@@ -263,7 +261,6 @@ namespace EIAUpdater
 
         private string UnZipping(string zipFile, string extractFolder)
         {
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start extracting:" + zipFile);
             logger.Info("Start extracting file " + zipFile);
 
             try
@@ -289,7 +286,6 @@ namespace EIAUpdater
 
         private void ParsingData(string DataFile, string Identifier)
         {
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss")+ "|Start parsing data of " + DataFile);
             logger.Info("Strat parsing data of " + Identifier);
             int BatchSize = Identifier.Equals("EBA") ? 100 : 1000;
             int Count = 0;
@@ -317,11 +313,10 @@ namespace EIAUpdater
                 }
                 if (documents.Count > 0)
                     conn.InsertCollection(Identifier, documents);
+                Count += documents.Count;
             }
             catch(Exception e)
             {
-                //Console.WriteLine(e.Message);
-                //Console.WriteLine(e);
                 throw e;
             }
             finally
@@ -329,8 +324,13 @@ namespace EIAUpdater
                 reader.Dispose();
                 File.Delete(DataFile);
             }
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Parsing " + Count + " sets of data of " + Identifier + " has done!");
-            logger.Info("Finish parsing data of " + Identifier);
+            StringBuilder sb = new StringBuilder("Finish parsing data of ");
+            sb.Append(Identifier);
+            sb.Append("(");
+            sb.Append(Count.ToString());
+            sb.Append(")");
+            //logger.Info("Finish parsing data of " + Identifier);
+            logger.Info(sb.ToString());
         }
 
     }
