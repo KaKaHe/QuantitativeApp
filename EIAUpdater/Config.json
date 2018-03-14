@@ -6,5 +6,6 @@
   "MongoDBPort": 27017,
   "ManifestCollection": "EIA_Manifest",
   "UserName": "EIA",
-  "Password": "EIA"
+  "Password": "EIA",
+  "DebugMode": true
 }

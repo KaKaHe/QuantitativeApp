@@ -25,6 +25,7 @@ namespace EIAUpdater
         public string Password = "";
         public string Manifest = "http://api.eia.gov/bulk/manifest.txt";
         public string LocalFolder = "C:\\DataGrabing";
+        public bool DebugMode = false;
         public string LocalFileName = "manifest_" + DateTime.UtcNow.ToString("yyyyMMdd") + ".txt";
         //public event AsyncCompletedEventHandler DownloadCompleted;
         public static ILog logger = LogManager.GetLogger(typeof(EIAUpdater));
@@ -271,6 +272,8 @@ namespace EIAUpdater
                 string[] extracted = Directory.GetFiles(extractFolder, "*.txt");
                 Uri uri = new Uri(zipFile);
                 string strArchive = Path.Combine(new string[] { extractFolder, "Archive", uri.Segments.GetValue(uri.Segments.Length - 1).ToString().Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip") });
+                if (File.Exists(strArchive))
+                    File.Move(strArchive, string.Concat(strArchive, DateTime.Now.ToString("yyyyMMdd")));
                 File.Move(zipFile, strArchive);
                 //File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
                 logger.Info("File: " + zipFile + " had been archived to :" + strArchive);
@@ -286,6 +289,12 @@ namespace EIAUpdater
 
         private void ParsingData(string DataFile, string Identifier)
         {
+            if(DebugMode)
+            {
+                File.Delete(DataFile);
+                logger.Info("[DebugMode] is on, no data will be parsed of " + Identifier);
+                return;
+            }
             logger.Info("Strat parsing data of " + Identifier);
             int BatchSize = Identifier.Equals("EBA") ? 100 : 1000;
             int Count = 0;

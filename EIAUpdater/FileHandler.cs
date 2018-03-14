@@ -102,6 +102,7 @@ namespace EIAUpdater
             HttpWebResponse response = null;
             FileStream filestream = null;
             Stream stream = null;
+            int ByteCounter = 0;
             try
             {
                 if (!Directory.Exists(strLocalPath))
@@ -114,7 +115,7 @@ namespace EIAUpdater
                 //WebResponse s = await request.GetResponseAsync();
                 using (response = (HttpWebResponse) await request.GetResponseAsync())
                 {
-                    //logger.Info("Send HttpRequest");
+                    logger.Info("Get Response of " + response.ContentLength + " bytes");
                     using (stream = response.GetResponseStream())
                     {
                         byte[] buf = new byte[10240];
@@ -122,13 +123,15 @@ namespace EIAUpdater
                         filestream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
                         while ((read=stream.Read(buf, 0, 10240))!=0)
                         {
+                            ByteCounter += read;
                             filestream.Write(buf, 0, read);
                         }
                         //logger.Info("Put them into Stream.");
                     }
+                    logger.Info(ByteCounter.ToString() + " bytes had been written to " + LocalFileName);
                 }
 
-                    return Path.Combine(strLocalPath, LocalFileName);
+                return Path.Combine(strLocalPath, LocalFileName);
             }
             catch (Exception e)
             {
