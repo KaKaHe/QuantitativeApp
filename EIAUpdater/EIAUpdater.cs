@@ -273,7 +273,7 @@ namespace EIAUpdater
                 Uri uri = new Uri(zipFile);
                 string strArchive = Path.Combine(new string[] { extractFolder, "Archive", uri.Segments.GetValue(uri.Segments.Length - 1).ToString().Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip") });
                 if (File.Exists(strArchive))
-                    File.Move(strArchive, string.Concat(strArchive, DateTime.Now.ToString("yyyyMMdd")));
+                    File.Move(strArchive, string.Concat(strArchive, ".", DateTime.Now.ToString("yyyyMMdd")));
                 File.Move(zipFile, strArchive);
                 //File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
                 logger.Info("File: " + zipFile + " had been archived to :" + strArchive);
@@ -307,6 +307,15 @@ namespace EIAUpdater
                 while (!reader.EndOfStream)
                 {
                     str = reader.ReadLine();
+                    if (str.Contains("\0"))
+                    {
+                        logger.Warn(string.Concat("File ", Identifier, ",Line ", (Count + 1).ToString(), " has invalid char."));
+                        str = str.Replace("\0", "");
+                        if (string.IsNullOrEmpty(str) || string.IsNullOrWhiteSpace(str))
+                        {
+                            continue;
+                        }
+                    }
                     JObject obj = (JObject)JsonConvert.DeserializeObject(str);
                     BsonDocument bdoc = BsonDocument.Parse(str);
                     //conn.InsertCollection(Identifier, bdoc);
@@ -322,7 +331,6 @@ namespace EIAUpdater
                 }
                 if (documents.Count > 0)
                     conn.InsertCollection(Identifier, documents);
-                Count += documents.Count;
             }
             catch(Exception e)
             {

@@ -7,5 +7,5 @@
   "ManifestCollection": "EIA_Manifest",
   "UserName": "EIA",
   "Password": "EIA",
-  "DebugMode": true
+  "DebugMode": false
 }

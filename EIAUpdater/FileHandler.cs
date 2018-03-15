@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 
@@ -102,6 +102,7 @@ namespace EIAUpdater
             HttpWebResponse response = null;
             FileStream filestream = null;
             Stream stream = null;
+            long FullLength = -1;
             int ByteCounter = 0;
             try
             {
@@ -113,23 +114,33 @@ namespace EIAUpdater
                 string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
 
                 //WebResponse s = await request.GetResponseAsync();
-                using (response = (HttpWebResponse) await request.GetResponseAsync())
+                do
                 {
-                    logger.Info("Get Response of " + response.ContentLength + " bytes");
-                    using (stream = response.GetResponseStream())
+                    ByteCounter = 0;
+                    using (response = (HttpWebResponse)await request.GetResponseAsync())
                     {
-                        byte[] buf = new byte[10240];
-                        int read = 0;
-                        filestream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
-                        while ((read=stream.Read(buf, 0, 10240))!=0)
+                        FullLength = response.ContentLength;
+                        logger.Info("Get Response of " + FullLength + " bytes");
+                        using (stream = response.GetResponseStream())
                         {
-                            ByteCounter += read;
-                            filestream.Write(buf, 0, read);
+                            byte[] buf = new byte[10240];
+                            int read = 0;
+                            filestream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
+                            while ((read = stream.Read(buf, 0, 10240)) != 0)
+                            {
+                                ByteCounter += read;
+                                filestream.Write(buf, 0, read);
+                            }
+                            //logger.Info("Put them into Stream.");
                         }
-                        //logger.Info("Put them into Stream.");
+                        logger.Info(ByteCounter.ToString() + " bytes had been written to " + LocalFileName);
+                        if (ByteCounter < FullLength)
+                        {
+                            logger.Warn(LocalFileName + " is incomplete, restarting downloading again.");
+                            Thread.Sleep(10000);
+                        }
                     }
-                    logger.Info(ByteCounter.ToString() + " bytes had been written to " + LocalFileName);
-                }
+                } while (ByteCounter != FullLength);
 
                 return Path.Combine(strLocalPath, LocalFileName);
             }
