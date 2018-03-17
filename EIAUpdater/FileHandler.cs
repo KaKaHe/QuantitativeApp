@@ -98,7 +98,8 @@ namespace EIAUpdater
         {
             //System.Threading.Thread.Sleep(5000);
             logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(FileURL);
+            //HttpWebRequest request = (HttpWebRequest)WebRequest.Create(FileURL);
+            HttpWebRequest request = null;
             HttpWebResponse response = null;
             FileStream filestream = null;
             Stream stream = null;
@@ -117,6 +118,7 @@ namespace EIAUpdater
                 do
                 {
                     ByteCounter = 0;
+                    request = (HttpWebRequest)WebRequest.Create(FileURL);
                     using (response = (HttpWebResponse)await request.GetResponseAsync())
                     {
                         FullLength = response.ContentLength;
@@ -137,6 +139,9 @@ namespace EIAUpdater
                         if (ByteCounter < FullLength)
                         {
                             logger.Warn(LocalFileName + " is incomplete, restarting downloading again.");
+                            filestream.Flush();
+                            filestream.Close();
+                            File.Delete(strLocalFile);
                             Thread.Sleep(10000);
                         }
                     }

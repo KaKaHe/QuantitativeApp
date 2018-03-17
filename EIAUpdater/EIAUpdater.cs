@@ -295,7 +295,7 @@ namespace EIAUpdater
                 logger.Info("[DebugMode] is on, no data will be parsed of " + Identifier);
                 return;
             }
-            logger.Info("Strat parsing data of " + Identifier);
+            logger.Info("Start parsing data of " + Identifier);
             int BatchSize = Identifier.Equals("EBA") ? 100 : 1000;
             int Count = 0;
             List<BsonDocument> documents = new List<BsonDocument>();
