@@ -96,41 +96,57 @@ namespace EIAUpdater
 
         private bool GetManifest()
         {
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start getting today's manifest");
             logger.Info("Start downloading today's manifest");
-            using (var client = new WebClient())
-            {
-                try
-                {
-                    //client.DownloadFile(Manifest, LocalFolder);
-                    string strLocalName = Path.Combine(LocalFolder, LocalFileName);
-                    //If DataGrabing folder doesn't exist, create it.
-                    if (!Directory.Exists(LocalFolder))
-                    {
-                        Directory.CreateDirectory(LocalFolder);
-                    }
+            FileHandler handler = new FileHandler(Manifest);
+            Task<string> task = handler.DownloadWebRequest(LocalFolder, LocalFileName);
+            Task.WaitAll();
+            string manifest = task.Result;
 
-                    if (!File.Exists(strLocalName))
-                    {
-                        client.DownloadFile(Manifest, strLocalName);
-                    }
-                }
-                catch (WebException we)
-                {
-                    Console.WriteLine(we.Message.ToString());
-                    return false;
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message.ToString());
-                    return false;
-                }
-                finally
-                {
-                    client.Dispose();
-                }
-            }
-            return true;
+            if(!string.IsNullOrEmpty(manifest) && !manifest.Equals("Failed"))
+                return true;
+
+            return false;
+
+            #region WebClient downloading
+            //using (var client = new WebClient())
+            //{
+            //    try
+            //    {
+            //        //client.DownloadFile(Manifest, LocalFolder);
+            //        string strLocalName = Path.Combine(LocalFolder, LocalFileName);
+            //        //If DataGrabing folder doesn't exist, create it.
+            //        if (!Directory.Exists(LocalFolder))
+            //        {
+            //            Directory.CreateDirectory(LocalFolder);
+            //        }
+
+            //        if (File.Exists(strLocalName))
+            //        {
+            //            File.Delete(strLocalName);
+            //        }
+            //        client.DownloadFile(Manifest, strLocalName);
+
+            //        //if (!File.Exists(strLocalName))
+            //        //{
+            //        //    client.DownloadFile(Manifest, strLocalName);
+            //        //}
+            //    }
+            //    catch (WebException we)
+            //    {
+            //        Console.WriteLine(we.Message.ToString());
+            //        return false;
+            //    }
+            //    catch (Exception e)
+            //    {
+            //        Console.WriteLine(e.Message.ToString());
+            //        return false;
+            //    }
+            //    finally
+            //    {
+            //        client.Dispose();
+            //    }
+            //}
+            #endregion
         }
 
         private List<FileSummary> ParsingManifest()
@@ -180,7 +196,8 @@ namespace EIAUpdater
             }
 
             //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish parsing today's manifest");
-            logger.Info("Finish parsing today's manifest");
+            logger.Info("Finish parsing today's manifest.");
+            logger.Info("There are " + summary.Count + " datasets need to update.");
             return summary;
         }
 
@@ -211,11 +228,12 @@ namespace EIAUpdater
                 FileHandler handler = new FileHandler(fs.accessURL);
                 //string downloadedfile = handler.DownloadHTTPClient(Path.Combine(LocalFolder, fs.identifier));
                 //string downloadedfile = handler.DownloadWebClient(Path.Combine(LocalFolder, fs.identifier));
-                //string downloadedfile =  handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
-                Task<string> task = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
-                string downloadedfile = task.Result;
 
-                if (!String.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
+                //Task<string> task = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier));
+                //string downloadedfile = task.Result;
+                string downloadedfile = handler.DownloadWebRequest(Path.Combine(LocalFolder, fs.identifier)).Result;
+
+                if (!string.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
                 {
                     string extractedFile = UnZipping(downloadedfile, Path.Combine(LocalFolder, fs.identifier));
 
@@ -228,7 +246,6 @@ namespace EIAUpdater
             }
             catch(Exception E)
             {
-                //throw E;
                 logger.Error(E.Message, E);
             }
         }

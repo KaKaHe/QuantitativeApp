@@ -1,5 +1,5 @@
 ﻿using System;
-using System.ComponentModel;
+//using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -15,10 +15,10 @@ namespace EIAUpdater
         private string LocalFileName;
         //public event AsyncCompletedEventHandler DownloadCallback;
         public static ILog logger = LogManager.GetLogger(typeof(FileHandler));
-        public FileHandler(string strPath)
+        public FileHandler(string remotePath)
         {
-            FileURL = strPath;
-            LocalFileName = FileURL.Substring(strPath.LastIndexOf("/") + 1);
+            FileURL = remotePath;
+            LocalFileName = FileURL.Substring(remotePath.LastIndexOf("/") + 1);
         }
 
         public string DownloadWebClient(string strLocalPath)
@@ -93,12 +93,12 @@ namespace EIAUpdater
                 logger.Info("Finish downloading " + LocalFileName);
             }
         }
-        
-        public async Task<string> DownloadWebRequest(string strLocalPath)
+
+        public async Task<string> DownloadWebRequest(string strLocalPath, string strLocalName = "")
         {
-            //System.Threading.Thread.Sleep(5000);
             logger.Info("Start downloading " + FileURL + " to " + strLocalPath);
-            //HttpWebRequest request = (HttpWebRequest)WebRequest.Create(FileURL);
+            if (!string.IsNullOrEmpty(strLocalName))
+                LocalFileName = strLocalName;
             HttpWebRequest request = null;
             HttpWebResponse response = null;
             FileStream filestream = null;
@@ -113,8 +113,7 @@ namespace EIAUpdater
                     Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
                 }
                 string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
-
-                //WebResponse s = await request.GetResponseAsync();
+                
                 do
                 {
                     ByteCounter = 0;
@@ -133,7 +132,6 @@ namespace EIAUpdater
                                 ByteCounter += read;
                                 filestream.Write(buf, 0, read);
                             }
-                            //logger.Info("Put them into Stream.");
                         }
                         logger.Info(ByteCounter.ToString() + " bytes had been written to " + LocalFileName);
                         if (ByteCounter < FullLength)
