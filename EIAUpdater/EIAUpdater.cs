@@ -82,7 +82,7 @@ namespace EIAUpdater
             else
             {
                 //If the mainfest file downloaded failed, do something else other than parsing.
-                logger.Error("Loading manifest failed of day " + DateTime.Now.ToString("yyyyMMdd"));
+                logger.Error("Loading manifest failed of day " + DateTime.UtcNow.ToString("yyyyMMdd"));
             }
         }
 
@@ -97,6 +97,10 @@ namespace EIAUpdater
         private bool GetManifest()
         {
             logger.Info("Start downloading today's manifest");
+            if (File.Exists(Path.Combine(LocalFolder, LocalFileName)))
+            {
+                File.Move(Path.Combine(LocalFolder, LocalFileName), Path.Combine(LocalFolder, string.Concat(LocalFileName, DateTime.UtcNow.ToString(".yyyyMMddHHmmss"))));
+            }
             FileHandler handler = new FileHandler(Manifest);
             Task<string> task = handler.DownloadWebRequest(LocalFolder, LocalFileName);
             Task.WaitAll();
@@ -151,7 +155,6 @@ namespace EIAUpdater
 
         private List<FileSummary> ParsingManifest()
         {
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Start parsing today's manifest");
             logger.Info("Start parsing today's manifest");
             List<FileSummary> summary = new List<FileSummary>();
             MongoAgent conn = GetConn();
@@ -194,8 +197,7 @@ namespace EIAUpdater
                     }
                 }
             }
-
-            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish parsing today's manifest");
+            
             logger.Info("Finish parsing today's manifest.");
             logger.Info("There are " + summary.Count + " datasets need to update.");
             return summary;
@@ -288,13 +290,12 @@ namespace EIAUpdater
 
                 string[] extracted = Directory.GetFiles(extractFolder, "*.txt");
                 Uri uri = new Uri(zipFile);
-                string strArchive = Path.Combine(new string[] { extractFolder, "Archive", uri.Segments.GetValue(uri.Segments.Length - 1).ToString().Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip") });
+                string strArchive = Path.Combine(new string[] { extractFolder, "Archive", uri.Segments.GetValue(uri.Segments.Length - 1).ToString().Replace(".zip", DateTime.UtcNow.ToString("yyyyMMdd") + ".zip") });
                 if (File.Exists(strArchive))
-                    File.Move(strArchive, string.Concat(strArchive, ".", DateTime.Now.ToString("yyyyMMdd")));
+                    File.Move(strArchive, string.Concat(strArchive, ".", DateTime.UtcNow.ToString("yyyyMMddHHmmss")));
                 File.Move(zipFile, strArchive);
-                //File.Move(zipFile, zipFile.Replace(".zip", DateTime.Now.ToString("yyyyMMdd") + ".zip"));
+                //File.Move(zipFile, zipFile.Replace(".zip", DateTime.UtcNow.ToString("yyyyMMdd") + ".zip"));
                 logger.Info("File: " + zipFile + " had been archived to :" + strArchive);
-                //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss") + "|Finish extracting:" + zipFile);
                 logger.Info("Finish extracting: " + zipFile);
                 return extracted[0];
             }
