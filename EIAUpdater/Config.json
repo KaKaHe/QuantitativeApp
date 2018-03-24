@@ -1,11 +1,11 @@
 ﻿{
-  "Manifest": "http://api.eia.gov/bulk/manifest.txt",
-  "LocalFolder": "C:\\DataGrabing\\",
   "MongoHost": "localhost",
   "MongoDB": "Quantitative",
   "MongoDBPort": 27017,
+  "Manifest": "http://api.eia.gov/bulk/manifest.txt",
   "ManifestCollection": "EIA_Manifest",
   "UserName": "EIA",
   "Password": "EIA",
+  "LocalFolder": "C:\\DataGrabing\\",
   "DebugMode": false
 }

@@ -2,7 +2,7 @@
 
 namespace EIAUpdater.Model
 {
-    public class FileSummary
+    public class DataSet
     {
         public ObjectId _id;
         public string last_updated;
@@ -25,10 +25,5 @@ namespace EIAUpdater.Model
         public string temporal;
         public string modified;
         public string token;
-
-        public FileSummary()
-        {
-
-        }
     }
 }

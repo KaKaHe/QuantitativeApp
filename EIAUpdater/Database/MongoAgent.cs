@@ -1,11 +1,12 @@
-﻿using MongoDB.Bson;
+﻿using EIAUpdater.Model;
+using MongoDB.Bson;
 using MongoDB.Driver;
 //using Newtonsoft.Json.Linq;
 //using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EIAUpdater
+namespace EIAUpdater.Database
 {
     public class MongoAgent
     {
@@ -35,6 +36,23 @@ namespace EIAUpdater
         {
             if (instance == null)
                 instance = new MongoAgent(strConn);
+            return instance;
+        }
+
+        public static MongoAgent GetInstance(Configurations config)
+        {
+            if (instance == null)
+            {
+                MongoCredential credential = MongoCredential.CreateCredential(config.MongoDB, config.UserName, config.Password);
+                MongoClientSettings clientSettings = new MongoClientSettings
+                {
+                    Server = new MongoServerAddress(config.MongoHost, config.MongoDBPort),
+                    Credential = credential,
+                    UseSsl = false
+                };
+                instance = GetInstance(clientSettings);
+                instance.SetDatabase(config.MongoDB);
+            }
             return instance;
         }
 

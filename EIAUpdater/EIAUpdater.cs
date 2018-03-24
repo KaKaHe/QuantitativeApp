@@ -1,4 +1,7 @@
-﻿using EIAUpdater.Model;
+﻿using EIAUpdater.Database;
+using EIAUpdater.Handler;
+using EIAUpdater.Model;
+using log4net;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -8,10 +11,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Net;
-using System.Threading.Tasks;
-using log4net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EIAUpdater
 {
@@ -35,25 +36,33 @@ namespace EIAUpdater
             //logger = LogManager.GetLogger(typeof(EIAUpdater));
             logger.Info("Start updating EIA's data for today");
             EIAUpdater eia = Initializer();
+            Configurations config = ReadConfig();
+            ManifestHandler manifest = new ManifestHandler(config);
 
-            if (eia.GetManifest())
+            //if (eia.GetManifest())
+            if (manifest.Download())
             {
                 //If the manifest file is downloaded successfully, continue doing parsing.
-                List<FileSummary> dataList = eia.ParsingManifest();
+                //List<DataSet> dataList = eia.ParsingManifest();
+                List<DataSet> dataList = manifest.Parsing(MongoAgent.GetInstance(config));
                 List<Task> processList = new List<Task>();
                 List<Task> completelist = new List<Task>();
 
-                foreach (FileSummary fs in dataList)
+                foreach (DataSet dataset in dataList)
                 {
                     try
                     {
-                        FileHandler handler = new FileHandler(fs.accessURL);
+                        FileHandler handler = new FileHandler(dataset.accessURL);
+                        Console.WriteLine(processList.Count);
                         if (processList.Count >= 3)
                         {
                             Task.WaitAny(processList.ToArray());
-                            processList.ForEach(a => {
+                            processList.ForEach(a =>
+                            {
                                 if (a.Status.Equals(TaskStatus.RanToCompletion))
+                                {
                                     completelist.Add(a);
+                                }
                             });
                             foreach (Task a in completelist)
                             {
@@ -61,8 +70,7 @@ namespace EIAUpdater
                             }
                             completelist.Clear();
                         }
-
-                        Task process = Task.Factory.StartNew(() => eia.ProcessDataFiles(fs));
+                        Task process = Task.Factory.StartNew(() => eia.ProcessDataFiles(dataset));
                         processList.Add(process);
                     }
                     catch (Exception e)
@@ -86,12 +94,21 @@ namespace EIAUpdater
             }
         }
 
+        [Obsolete]
         private static EIAUpdater Initializer()
         {
             StreamReader sr = new StreamReader("Config.json");
             EIAUpdater e = JsonConvert.DeserializeObject<EIAUpdater>(sr.ReadToEnd());
             logger.Info("Configuration file read successfully.");
             return e;
+        }
+
+        private static Configurations ReadConfig()
+        {
+            StreamReader sr = new StreamReader("Config.json");
+            Configurations config = JsonConvert.DeserializeObject<Configurations>(sr.ReadToEnd());
+            logger.Info("Configuration file read successfully.");
+            return config;
         }
 
         private bool GetManifest()
@@ -110,53 +127,12 @@ namespace EIAUpdater
                 return true;
 
             return false;
-
-            #region WebClient downloading
-            //using (var client = new WebClient())
-            //{
-            //    try
-            //    {
-            //        //client.DownloadFile(Manifest, LocalFolder);
-            //        string strLocalName = Path.Combine(LocalFolder, LocalFileName);
-            //        //If DataGrabing folder doesn't exist, create it.
-            //        if (!Directory.Exists(LocalFolder))
-            //        {
-            //            Directory.CreateDirectory(LocalFolder);
-            //        }
-
-            //        if (File.Exists(strLocalName))
-            //        {
-            //            File.Delete(strLocalName);
-            //        }
-            //        client.DownloadFile(Manifest, strLocalName);
-
-            //        //if (!File.Exists(strLocalName))
-            //        //{
-            //        //    client.DownloadFile(Manifest, strLocalName);
-            //        //}
-            //    }
-            //    catch (WebException we)
-            //    {
-            //        Console.WriteLine(we.Message.ToString());
-            //        return false;
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Console.WriteLine(e.Message.ToString());
-            //        return false;
-            //    }
-            //    finally
-            //    {
-            //        client.Dispose();
-            //    }
-            //}
-            #endregion
         }
 
-        private List<FileSummary> ParsingManifest()
+        private List<DataSet> ParsingManifest()
         {
             logger.Info("Start parsing today's manifest");
-            List<FileSummary> summary = new List<FileSummary>();
+            List<DataSet> summary = new List<DataSet>();
             MongoAgent conn = GetConn();
 
             StreamReader sr = new StreamReader(Path.Combine(LocalFolder, LocalFileName));
@@ -168,7 +144,7 @@ namespace EIAUpdater
             foreach (JToken token in jsonStr.SelectToken("dataset").Children())
             {
                 //Deserialize the token from JSON to object
-                FileSummary fs = JsonConvert.DeserializeObject<FileSummary>(token.First.ToString());
+                DataSet fs = JsonConvert.DeserializeObject<DataSet>(token.First.ToString());
                 fs.token = token.Path;
 
                 //Compare with the last record to decide if it needs to be download today.
@@ -183,7 +159,7 @@ namespace EIAUpdater
                 else
                 {
                     //Always only check the top 1 record to decide if a downloading need to be performed or not.
-                    FileSummary old = BsonSerializer.Deserialize<FileSummary>(list[0]);
+                    DataSet old = BsonSerializer.Deserialize<DataSet>(list[0]);
 
                     if (DateTime.Parse(fs.last_updated) > DateTime.Parse(old.last_updated))
                     {
@@ -222,7 +198,7 @@ namespace EIAUpdater
             return ma;
         }
 
-        private void ProcessDataFiles(FileSummary fs)
+        private void ProcessDataFiles(DataSet fs)
         {
             try
             {
@@ -255,7 +231,7 @@ namespace EIAUpdater
         /*
          * No downloading
          */
-        private void ProcessDataFiles(FileSummary fs, string downloadedfile)
+        private void ProcessDataFiles(DataSet fs, string downloadedfile)
         {
             try
             {

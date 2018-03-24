@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 
-namespace EIAUpdater
+namespace EIAUpdater.Handler
 {
     public class FileHandler
     {
