@@ -2,7 +2,7 @@
 
 namespace EIAUpdater.Model
 {
-    public class DataSet
+    public class DataSetSummary
     {
         public ObjectId _id;
         public string last_updated;

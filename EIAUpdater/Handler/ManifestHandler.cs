@@ -1,44 +1,39 @@
-﻿using log4net;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
-using System.Threading.Tasks;
+﻿using EIAUpdater.Database;
 using EIAUpdater.Model;
-using System.Text;
-using EIAUpdater.Database;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
+using log4net;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace EIAUpdater.Handler
 {
     public class ManifestHandler
     {
-        public static ILog logger = LogManager.GetLogger(typeof(ManifestHandler));
-        private string Manifest { get; set; }
-        private string LocalFolder { get; set; }
+        private static ILog logger = LogManager.GetLogger(typeof(ManifestHandler));
         private string LocalFileName { get; set; }
-        private string ManifestCollection { get; set; }
+        public Configurations Configurations;
 
         public ManifestHandler(Configurations config)
         {
-            Manifest = config.Manifest;
-            LocalFolder = config.LocalFolder;
-            LocalFileName = DateStampFile(GetFileName(Manifest), "_yyyyMMdd");
-            ManifestCollection = config.ManifestCollection;
+            Configurations = config;
+            LocalFileName = DateStampFile(GetFileName(config.Manifest), "_yyyyMMdd");
         }
 
         public bool Download()
         {
             logger.Info("Start downloading today's manifest");
-            if (File.Exists(Path.Combine(LocalFolder, LocalFileName)))
+            if (File.Exists(Path.Combine(Configurations.LocalFolder, LocalFileName)))
             {
-                File.Move(Path.Combine(LocalFolder, LocalFileName), Path.Combine(LocalFolder, DateStampFile(LocalFileName, "HHmmss")));
+                File.Move(Path.Combine(Configurations.LocalFolder, LocalFileName), Path.Combine(Configurations.LocalFolder, DateStampFile(LocalFileName, "HHmmss")));
             }
-            FileHandler handler = new FileHandler(Manifest);
-            Task<string> task = handler.DownloadWebRequest(LocalFolder, LocalFileName);
+            FileHandler handler = new FileHandler(Configurations.Manifest);
+            Task<string> task = handler.Download(Configurations.LocalFolder, LocalFileName);
             Task.WaitAll();
             string manifest = task.Result;
 
@@ -48,37 +43,33 @@ namespace EIAUpdater.Handler
             return false;
         }
 
-        public List<DataSet> Parsing(MongoAgent conn)
+        public List<DataSetSummary> Parsing(MongoAgent conn)
         {
             logger.Info("Start parsing today's manifest");
-            List<DataSet> summary = new List<DataSet>();
-            //MongoAgent conn = GetConn();
+            List<DataSetSummary> summary = new List<DataSetSummary>();
 
-            StreamReader sr = new StreamReader(Path.Combine(LocalFolder, LocalFileName));
+            StreamReader sr = new StreamReader(Path.Combine(Configurations.LocalFolder, LocalFileName));
             JObject jsonStr = JObject.Parse(sr.ReadToEnd());
 
-            //JObject obj = (JObject)JToken.ReadFrom(new JsonTextReader(new StringReader(jsonStr)));
-
-            //Manifest manifest = JsonConvert.DeserializeObject<Manifest>(jStr);
             foreach (JToken token in jsonStr.SelectToken("dataset").Children())
             {
                 //Deserialize the token from JSON to object
-                DataSet fs = JsonConvert.DeserializeObject<DataSet>(token.First.ToString());
+                DataSetSummary fs = JsonConvert.DeserializeObject<DataSetSummary>(token.First.ToString());
                 fs.token = token.Path;
 
                 //Compare with the last record to decide if it needs to be download today.
                 BsonDocument query = new BsonDocument("identifier", fs.identifier);
-                List<BsonDocument> list = conn.ReadCollection(ManifestCollection, query);
+                List<BsonDocument> list = conn.ReadCollection(Configurations.ManifestCollection, query);
                 if (list.Count == 0)
                 {
                     //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
                     summary.Add(fs);
-                    conn.InsertCollectionAsync(ManifestCollection, BsonDocument.Parse(token.First.ToString()));
+                    conn.InsertCollectionAsync(Configurations.ManifestCollection, BsonDocument.Parse(token.First.ToString()));
                 }
                 else
                 {
                     //Always only check the top 1 record to decide if a downloading need to be performed or not.
-                    DataSet old = BsonSerializer.Deserialize<DataSet>(list[0]);
+                    DataSetSummary old = BsonSerializer.Deserialize<DataSetSummary>(list[0]);
 
                     if (DateTime.Parse(fs.last_updated) > DateTime.Parse(old.last_updated))
                     {
@@ -87,8 +78,7 @@ namespace EIAUpdater.Handler
                         query = new BsonDocument("_id", old._id);
                         BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(fs));
                         doc.SetElement(new BsonElement("_id", old._id));
-                        //conn.replaceCollection(ManifestCollection, query, doc);
-                        conn.UpdateCollectionAsync(ManifestCollection, query, doc);
+                        conn.UpdateCollectionAsync(Configurations.ManifestCollection, query, doc);
                     }
                 }
             }

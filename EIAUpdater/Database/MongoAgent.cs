@@ -1,8 +1,6 @@
 ﻿using EIAUpdater.Model;
 using MongoDB.Bson;
 using MongoDB.Driver;
-//using Newtonsoft.Json.Linq;
-//using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -208,16 +206,6 @@ namespace EIAUpdater.Database
         {
 
         }
-
-        //private string encodeDotDollar(string input)
-        //{
-        //    return input.Replace("\\","\\\\").Replace(".", "\\u002e").Replace("$", "\\u0024");
-        //}
-
-        //private string decodeDotDollar(string input)
-        //{
-        //    return input.Replace("\u002e", ".").Replace("\\u0024", "$").Replace("\\\\", "\\");
-        //}
         
     }
 }

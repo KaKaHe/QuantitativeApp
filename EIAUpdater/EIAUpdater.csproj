@@ -70,10 +70,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EIAUpdater.cs" />
+    <Compile Include="Handler\DataProcessor.cs" />
     <Compile Include="Handler\FileHandler.cs" />
     <Compile Include="Handler\ManifestHandler.cs" />
     <Compile Include="Model\Configurations.cs" />
-    <Compile Include="Model\DataSet.cs" />
+    <Compile Include="Model\DataSetSummary.cs" />
     <Compile Include="Database\MongoAgent.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
