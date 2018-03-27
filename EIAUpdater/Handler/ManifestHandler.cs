@@ -54,16 +54,16 @@ namespace EIAUpdater.Handler
             foreach (JToken token in jsonStr.SelectToken("dataset").Children())
             {
                 //Deserialize the token from JSON to object
-                DataSetSummary fs = JsonConvert.DeserializeObject<DataSetSummary>(token.First.ToString());
-                fs.token = token.Path;
+                DataSetSummary dataSetSum = JsonConvert.DeserializeObject<DataSetSummary>(token.First.ToString());
+                dataSetSum.token = token.Path;
 
                 //Compare with the last record to decide if it needs to be download today.
-                BsonDocument query = new BsonDocument("identifier", fs.identifier);
+                BsonDocument query = new BsonDocument("identifier", dataSetSum.identifier);
                 List<BsonDocument> list = conn.ReadCollection(Configurations.ManifestCollection, query);
                 if (list.Count == 0)
                 {
                     //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
-                    summary.Add(fs);
+                    summary.Add(dataSetSum);
                     conn.InsertCollectionAsync(Configurations.ManifestCollection, BsonDocument.Parse(token.First.ToString()));
                 }
                 else
@@ -71,12 +71,12 @@ namespace EIAUpdater.Handler
                     //Always only check the top 1 record to decide if a downloading need to be performed or not.
                     DataSetSummary old = BsonSerializer.Deserialize<DataSetSummary>(list[0]);
 
-                    if (DateTime.Parse(fs.last_updated) > DateTime.Parse(old.last_updated))
+                    if (DateTime.Parse(dataSetSum.last_updated) > DateTime.Parse(old.last_updated))
                     {
-                        summary.Add(fs);
+                        summary.Add(dataSetSum);
                         //update performing.
                         query = new BsonDocument("_id", old._id);
-                        BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(fs));
+                        BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(dataSetSum));
                         doc.SetElement(new BsonElement("_id", old._id));
                         conn.UpdateCollectionAsync(Configurations.ManifestCollection, query, doc);
                     }

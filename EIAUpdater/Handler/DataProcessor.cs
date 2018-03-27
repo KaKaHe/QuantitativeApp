@@ -27,19 +27,30 @@ namespace EIAUpdater.Handler
             {
                 logger.Info("Task " + dataSummary.identifier + " start.");
                 FileHandler handler = new FileHandler(dataSummary.accessURL);
+                //string downloadedfile = string.Empty;
 
-                string downloadedfile = handler.Download(Path.Combine(configurations.LocalFolder, dataSummary.identifier)).Result;
-
-                if (!string.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
+                while (true)
                 {
-                    string extractedFile = handler.UnZipping(downloadedfile, Path.Combine(configurations.LocalFolder, dataSummary.identifier));
+                    string downloadedfile = handler.Download(Path.Combine(configurations.LocalFolder, dataSummary.identifier)).Result;
 
-                    if (!String.IsNullOrEmpty(extractedFile))
+                    if (!string.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
                     {
-                        ParsingData(extractedFile, dataSummary.identifier, configurations.DebugMode);
+                        string extractedFile = handler.UnZipping(downloadedfile, Path.Combine(configurations.LocalFolder, dataSummary.identifier));
+
+                        if (!String.IsNullOrEmpty(extractedFile))
+                        {
+                            ParsingData(extractedFile, dataSummary.identifier, configurations.DebugMode);
+                        }
                     }
+                    else
+                    {
+                        System.Threading.Thread.Sleep(100000);
+                        logger.Info("Retry downloading " + dataSummary.identifier);
+                        continue;
+                    }
+                    logger.Info("Task " + dataSummary.identifier + " end.");
+                    break;
                 }
-                logger.Info("Task " + dataSummary.identifier + " end.");
             }
             catch (Exception E)
             {
@@ -108,6 +119,23 @@ namespace EIAUpdater.Handler
             sb.Append(")");
             //logger.Info("Finish parsing data of " + Identifier);
             logger.Info(sb.ToString());
+        }
+
+        private string GetFileName(string FullName)
+        {
+            Uri fileUri = new Uri(FullName);
+            return fileUri.Segments.GetValue(fileUri.Segments.Length - 1).ToString();
+            //return string.Empty;
+        }
+
+        private string DateStampFile(string fileName, string stampFormat)
+        {
+            StringBuilder newName = new StringBuilder(fileName);
+            if (fileName.Contains("."))
+                newName.Insert(fileName.IndexOf("."), DateTime.Now.ToString(stampFormat));
+            else
+                newName.Append(DateTime.Now.ToString(stampFormat));
+            return newName.ToString();
         }
     }
 }

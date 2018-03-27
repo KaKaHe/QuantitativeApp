@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
@@ -34,6 +35,8 @@ namespace EIAUpdater.Handler
             Stream stream = null;
             long FullLength = -1;
             int ByteCounter = 0;
+            int BufferSize = 1024000;
+            string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
             try
             {
                 if (!Directory.Exists(strLocalPath))
@@ -41,7 +44,7 @@ namespace EIAUpdater.Handler
                     Directory.CreateDirectory(strLocalPath);
                     Directory.CreateDirectory(Path.Combine(strLocalPath, "Archive"));
                 }
-                string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
+                //string strLocalFile = Path.Combine(strLocalPath, LocalFileName);
                 
                 do
                 {
@@ -50,20 +53,26 @@ namespace EIAUpdater.Handler
                     using (response = (HttpWebResponse)await request.GetResponseAsync())
                     {
                         FullLength = response.ContentLength;
-                        logger.Info("Get Response of " + FullLength + " bytes");
+                        logger.Info((new StringBuilder("Get Response of ")).Append(FullLength).Append(" bytes of ").Append(LocalFileName));
+                        //logger.Info();
+                        //logger.Info("Get Response of " + FullLength + " bytes of " + );
+                        if (FullLength < BufferSize)
+                            BufferSize = (int)FullLength;
                         using (stream = response.GetResponseStream())
                         {
-                            byte[] buf = new byte[10240];
+                            byte[] buf = new byte[BufferSize];
                             int read = 0;
                             filestream = new FileStream(strLocalFile, FileMode.Create, FileAccess.Write, FileShare.None);
-                            while ((read = stream.Read(buf, 0, 10240)) != 0)
+                            while ((read = stream.Read(buf, 0, BufferSize)) != 0)
                             {
                                 ByteCounter += read;
                                 filestream.Write(buf, 0, read);
+                                //if (ByteCounter / (double)FullLength > 0.5)
+                                //    logger.Info("half of file " + strLocalName + " downloaded!.");
                             }
                         }
                         logger.Info(ByteCounter.ToString() + " bytes had been written to " + LocalFileName);
-                        if (ByteCounter < FullLength)
+                        if (ByteCounter != FullLength)
                         {
                             logger.Warn(LocalFileName + " is incomplete, restarting downloading again.");
                             filestream.Flush();
@@ -78,13 +87,17 @@ namespace EIAUpdater.Handler
             }
             catch (Exception e)
             {
+                logger.Info("Downloading failed. " + Path.Combine(strLocalPath, LocalFileName));
                 logger.Error(e.Message, e);
+                if (File.Exists(strLocalFile))
+                    File.Delete(strLocalFile);
                 return "Failed";
             }
             finally
             {
                 response.Dispose();
                 response.Close();
+                filestream.Flush();
                 filestream.Close();
                 logger.Info("Finish downloading " + LocalFileName);
             }
