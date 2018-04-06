@@ -72,6 +72,7 @@
     <Compile Include="EIAUpdater.cs" />
     <Compile Include="Handler\DataProcessor.cs" />
     <Compile Include="Handler\FileHandler.cs" />
+    <Compile Include="Handler\IHandler.cs" />
     <Compile Include="Handler\ManifestHandler.cs" />
     <Compile Include="Model\Configurations.cs" />
     <Compile Include="Model\DataSetSummary.cs" />
@@ -80,9 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="Config.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="Config.json" />
     <None Include="log4net.config">
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

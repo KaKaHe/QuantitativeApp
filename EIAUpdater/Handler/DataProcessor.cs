@@ -8,53 +8,65 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EIAUpdater.Handler
 {
-    public class DataProcessor
+    public class DataProcessor : IHandler
     {
-        private static ILog logger = LogManager.GetLogger(typeof(DataProcessor));
-        private Configurations configurations;
+        public ILog Logger { get; set; } //= LogManager.GetLogger(typeof(DataProcessor));
+        public Configurations Config { get; set; }
 
         public DataProcessor(Configurations config)
         {
-            configurations = config;
+            Config = config;
+            Logger = LogManager.GetLogger(typeof(DataProcessor));
         }
 
-        public void ProcessingData(DataSetSummary dataSummary)
+        public async Task<bool> ProcessingData(DataSetSummary dataSummary)
         {
             try
             {
-                logger.Info("Task " + dataSummary.identifier + " start.");
+                Logger.Info("Task " + dataSummary.identifier + " start.");
                 FileHandler handler = new FileHandler(dataSummary.accessURL);
                 //string downloadedfile = string.Empty;
-
-                while (true)
+                int Counter = 3;
+                string downloadedfile = await handler.Download(Path.Combine(Config.LocalFolder, dataSummary.identifier));
+                while (Counter-- >= 0)
                 {
-                    string downloadedfile = handler.Download(Path.Combine(configurations.LocalFolder, dataSummary.identifier)).Result;
+                    //string downloadedfile =  await handler.Download(Path.Combine(configurations.LocalFolder, dataSummary.identifier));
 
                     if (!string.IsNullOrEmpty(downloadedfile) && !downloadedfile.Equals("Failed"))
                     {
-                        string extractedFile = handler.UnZipping(downloadedfile, Path.Combine(configurations.LocalFolder, dataSummary.identifier));
+                        string extractedFile = handler.UnZipping(downloadedfile, Path.Combine(Config.LocalFolder, dataSummary.identifier));
 
                         if (!String.IsNullOrEmpty(extractedFile))
                         {
-                            ParsingData(extractedFile, dataSummary.identifier, configurations.DebugMode);
+                            ParsingData(extractedFile, dataSummary.identifier, Config.DebugMode);
                         }
                     }
                     else
                     {
-                        System.Threading.Thread.Sleep(100000);
-                        logger.Info("Retry downloading " + dataSummary.identifier);
+                        if (Counter == 0)
+                            break;
+                        System.Threading.Thread.Sleep(Config.RetryInterval);
+                        Logger.Info("Retry downloading " + dataSummary.identifier);
+                        string strIncomplete = Path.Combine(Config.LocalFolder, dataSummary.identifier, dataSummary.accessURL.Substring(dataSummary.accessURL.LastIndexOf("/") + 1));
+                        if (File.Exists(strIncomplete))
+                            File.Delete(strIncomplete);
+                        downloadedfile = handler.Download(Path.Combine(Config.LocalFolder, dataSummary.identifier)).Result;
                         continue;
                     }
-                    logger.Info("Task " + dataSummary.identifier + " end.");
-                    break;
+                    Logger.Info("Task " + dataSummary.identifier + " end.");
+                    return true;
                 }
+                Logger.Info("Downloading " + dataSummary.identifier + " failed.");
+                return false;
             }
             catch (Exception E)
             {
-                logger.Error(E.Message, E);
+                Logger.Error(E.Message, E);
+                return false;
             }
         }
 
@@ -63,10 +75,10 @@ namespace EIAUpdater.Handler
             if (DebugMode)
             {
                 File.Delete(DataFile);
-                logger.Info("[DebugMode] is on, no data will be parsed of " + Identifier);
+                Logger.Info("[DebugMode] is on, no data will be parsed of " + Identifier);
                 return;
             }
-            logger.Info("Start parsing data of " + Identifier);
+            Logger.Info("Start parsing data of " + Identifier);
             int BatchSize = Identifier.Equals("EBA") ? 100 : 1000;
             int Count = 0;
             List<BsonDocument> documents = new List<BsonDocument>();
@@ -74,13 +86,13 @@ namespace EIAUpdater.Handler
             try
             {
                 string str = "";
-                MongoAgent conn = MongoAgent.GetInstance(configurations);
+                MongoAgent conn = MongoAgent.GetInstance(Config);
                 while (!reader.EndOfStream)
                 {
                     str = reader.ReadLine();
                     if (str.Contains("\0"))
                     {
-                        logger.Warn(string.Concat("File ", Identifier, ",Line ", (Count + 1).ToString(), " has invalid char."));
+                        Logger.Warn(string.Concat("File ", Identifier, ",Line ", (Count + 1).ToString(), " has invalid char."));
                         str = str.Replace("\0", "");
                         if (string.IsNullOrEmpty(str) || string.IsNullOrWhiteSpace(str))
                         {
@@ -118,7 +130,7 @@ namespace EIAUpdater.Handler
             sb.Append(Count.ToString());
             sb.Append(")");
             //logger.Info("Finish parsing data of " + Identifier);
-            logger.Info(sb.ToString());
+            Logger.Info(sb.ToString());
         }
 
         private string GetFileName(string FullName)
@@ -137,5 +149,6 @@ namespace EIAUpdater.Handler
                 newName.Append(DateTime.Now.ToString(stampFormat));
             return newName.ToString();
         }
+
     }
 }

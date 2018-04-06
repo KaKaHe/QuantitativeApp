@@ -7,5 +7,7 @@
   "UserName": "EIA",
   "Password": "EIA",
   "LocalFolder": "C:\\DataGrabing\\",
-  "DebugMode": false
+  "DebugMode": false,
+  "ConcurrentThread": 2,
+  "RetryInterval": 120000
 }

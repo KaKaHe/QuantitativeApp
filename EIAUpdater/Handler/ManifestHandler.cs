@@ -13,27 +13,29 @@ using System.Threading.Tasks;
 
 namespace EIAUpdater.Handler
 {
-    public class ManifestHandler
+    public class ManifestHandler : IHandler
     {
-        private static ILog logger = LogManager.GetLogger(typeof(ManifestHandler));
+        //private static ILog logger = LogManager.GetLogger(typeof(ManifestHandler));
+        public ILog Logger { get; set; }
         private string LocalFileName { get; set; }
-        public Configurations Configurations;
+        public Configurations Config { get; set; }
 
         public ManifestHandler(Configurations config)
         {
-            Configurations = config;
+            Config = config;
             LocalFileName = DateStampFile(GetFileName(config.Manifest), "_yyyyMMdd");
+            Logger = LogManager.GetLogger(typeof(ManifestHandler));
         }
 
         public bool Download()
         {
-            logger.Info("Start downloading today's manifest");
-            if (File.Exists(Path.Combine(Configurations.LocalFolder, LocalFileName)))
+            Logger.Info("Start downloading today's manifest");
+            if (File.Exists(Path.Combine(Config.LocalFolder, LocalFileName)))
             {
-                File.Move(Path.Combine(Configurations.LocalFolder, LocalFileName), Path.Combine(Configurations.LocalFolder, DateStampFile(LocalFileName, "HHmmss")));
+                File.Move(Path.Combine(Config.LocalFolder, LocalFileName), Path.Combine(Config.LocalFolder, DateStampFile(LocalFileName, "HHmmss")));
             }
-            FileHandler handler = new FileHandler(Configurations.Manifest);
-            Task<string> task = handler.Download(Configurations.LocalFolder, LocalFileName);
+            FileHandler handler = new FileHandler(Config.Manifest);
+            Task<string> task = handler.Download(Config.LocalFolder, LocalFileName);
             Task.WaitAll();
             string manifest = task.Result;
 
@@ -43,49 +45,67 @@ namespace EIAUpdater.Handler
             return false;
         }
 
-        public List<DataSetSummary> Parsing(MongoAgent conn)
+        public List<DataSetSummary> ParsingData(MongoAgent conn)
         {
-            logger.Info("Start parsing today's manifest");
+            Logger.Info("Start parsing today's manifest");
             List<DataSetSummary> summary = new List<DataSetSummary>();
 
-            StreamReader sr = new StreamReader(Path.Combine(Configurations.LocalFolder, LocalFileName));
-            JObject jsonStr = JObject.Parse(sr.ReadToEnd());
-
-            foreach (JToken token in jsonStr.SelectToken("dataset").Children())
+            try
             {
-                //Deserialize the token from JSON to object
-                DataSetSummary dataSetSum = JsonConvert.DeserializeObject<DataSetSummary>(token.First.ToString());
-                dataSetSum.token = token.Path;
+                StreamReader sr = new StreamReader(Path.Combine(Config.LocalFolder, LocalFileName));
+                JObject jsonStr = JObject.Parse(sr.ReadToEnd());
 
-                //Compare with the last record to decide if it needs to be download today.
-                BsonDocument query = new BsonDocument("identifier", dataSetSum.identifier);
-                List<BsonDocument> list = conn.ReadCollection(Configurations.ManifestCollection, query);
-                if (list.Count == 0)
+                foreach (JToken token in jsonStr.SelectToken("dataset").Children())
                 {
-                    //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
-                    summary.Add(dataSetSum);
-                    conn.InsertCollectionAsync(Configurations.ManifestCollection, BsonDocument.Parse(token.First.ToString()));
-                }
-                else
-                {
-                    //Always only check the top 1 record to decide if a downloading need to be performed or not.
-                    DataSetSummary old = BsonSerializer.Deserialize<DataSetSummary>(list[0]);
+                    //Deserialize the token from JSON to object
+                    DataSetSummary dataSetSum = JsonConvert.DeserializeObject<DataSetSummary>(token.First.ToString());
+                    dataSetSum.token = token.Path;
 
-                    if (DateTime.Parse(dataSetSum.last_updated) > DateTime.Parse(old.last_updated))
+                    //Compare with the last record to decide if it needs to be download today.
+                    BsonDocument query = new BsonDocument("identifier", dataSetSum.identifier);
+                    List<BsonDocument> list = conn.ReadCollection(Config.ManifestCollection, query);
+                    if (list.Count == 0)
                     {
+                        //If there is no record of such identifier, it means this is a new file type. It needs to be downloaded and insert into database.
                         summary.Add(dataSetSum);
-                        //update performing.
-                        query = new BsonDocument("_id", old._id);
-                        BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(dataSetSum));
-                        doc.SetElement(new BsonElement("_id", old._id));
-                        conn.UpdateCollectionAsync(Configurations.ManifestCollection, query, doc);
+                        conn.InsertCollectionAsync(Config.ManifestCollection, BsonDocument.Parse(token.First.ToString()));
+                    }
+                    else
+                    {
+                        //Always only check the top 1 record to decide if a downloading need to be performed or not.
+                        DataSetSummary old = BsonSerializer.Deserialize<DataSetSummary>(list[0]);
+
+                        if (DateTime.Parse(dataSetSum.last_updated) > DateTime.Parse(old.last_updated))
+                        {
+                            dataSetSum._id = old._id;
+                            summary.Add(dataSetSum);
+                            //update performing.
+                            //query = new BsonDocument("_id", old._id);
+                            //BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(dataSetSum));
+                            //doc.SetElement(new BsonElement("_id", old._id));
+                            //conn.UpdateCollectionAsync(Configurations.ManifestCollection, query, doc);
+                        }
                     }
                 }
-            }
 
-            logger.Info("Finish parsing today's manifest.");
-            logger.Info("There are " + summary.Count + " datasets need to update.");
+                Logger.Info("Finish parsing today's manifest.");
+                Logger.Info("There are " + summary.Count + " datasets need to update.");
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e.Message);
+                return new List<DataSetSummary>();
+            }
             return summary;
+        }
+
+        public void UpdateManifest(DataSetSummary dataSet)
+        {
+            MongoAgent conn = MongoAgent.GetInstance(Config);
+            BsonDocument query = new BsonDocument("_id", dataSet._id);
+            BsonDocument doc = BsonDocument.Parse(JsonConvert.SerializeObject(dataSet));
+            doc.SetElement(new BsonElement("_id", dataSet._id));
+            conn.UpdateCollectionAsync(Config.ManifestCollection, query, doc);
         }
 
         private string GetFileName(string FullName)
@@ -104,5 +124,6 @@ namespace EIAUpdater.Handler
                 newName.Append(DateTime.Now.ToString(stampFormat));
             return newName.ToString();
         }
+
     }
 }

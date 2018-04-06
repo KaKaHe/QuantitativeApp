@@ -14,59 +14,76 @@ namespace EIAUpdater
 
         static void Main(string[] args)
         {
-            logger.Info("Start updating EIA's data for today");
-            Configurations config = FileHandler.ReadJsontoObject<Configurations>("Config.json");
-            logger.Info("Configuration file read successfully.");
-            ManifestHandler manifest = new ManifestHandler(config);
-            
-            if (manifest.Download())
+            if (args == null)
             {
-                //If the manifest file is downloaded successfully, continue doing parsing.
-                List<DataSetSummary> dataList = manifest.Parsing(MongoAgent.GetInstance(config));
-                List<Task> processList = new List<Task>();
-                List<Task> completelist = new List<Task>();
+                logger.Error("No Configuration file found.");
+                return;
+            }
+            logger.Info("Start updating EIA's data for today");
+            //Configurations config = FileHandler.ReadJsontoObject<Configurations>("Config.json");
+            //logger.Info("Configuration file read successfully.");
+            try
+            {
+                Configurations config = FileHandler.ReadJsontoObject<Configurations>(args[0]);
+                ManifestHandler manifest = new ManifestHandler(config);
 
-                foreach (DataSetSummary dataset in dataList)
+                if (manifest.Download())
                 {
-                    try
+                    //If the manifest file is downloaded successfully, continue doing parsing.
+                    List<DataSetSummary> dataList = manifest.ParsingData(MongoAgent.GetInstance(config));
+                    List<Task> processList = new List<Task>();
+                    List<Task> completelist = new List<Task>();
+
+                    foreach (DataSetSummary dataset in dataList)
                     {
-                        if (processList.Count >= 3)
+                        try
                         {
-                            Task.WaitAny(processList.ToArray());
-                            processList.ForEach(a =>
+                            if (processList.Count >= config.ConcurrentThread)
                             {
-                                if (a.Status.Equals(TaskStatus.RanToCompletion))
+                                Task.WaitAny(processList.ToArray());
+                                processList.ForEach(a =>
                                 {
-                                    completelist.Add(a);
+                                    if (a.Status.Equals(TaskStatus.RanToCompletion))
+                                    {
+                                        completelist.Add(a);
+                                    }
+                                });
+                                foreach (Task a in completelist)
+                                {
+                                    processList.Remove(a);
+                                }
+                                completelist.Clear();
+                            }
+                            Task process = Task.Factory.StartNew(() =>
+                            {
+                                DataProcessor processor = new DataProcessor(config);
+                                bool flag = processor.ProcessingData(dataset).Result;
+                                if (flag)
+                                {
+                                    manifest.UpdateManifest(dataset);
                                 }
                             });
-                            foreach (Task a in completelist)
-                            {
-                                processList.Remove(a);
-                            }
-                            completelist.Clear();
+                            processList.Add(process);
                         }
-                        Task process = Task.Factory.StartNew(() => 
+                        catch (Exception e)
                         {
-                            DataProcessor processor = new DataProcessor(config);
-                            processor.ProcessingData(dataset);
-                        });
-                        processList.Add(process);
+                            Console.WriteLine(e.Message);
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e.Message);
-                    }
-                }
 
-                Task.WaitAll(processList.ToArray());
-                
-                logger.Info("All updated data had been processed for today.");
+                    Task.WaitAll(processList.ToArray());
+
+                    logger.Info("All updated data had been processed for today.");
+                }
+                else
+                {
+                    //If the mainfest file downloaded failed, do something else other than parsing.
+                    logger.Error("Loading manifest failed of day " + DateTime.UtcNow.ToString("yyyyMMdd"));
+                }
             }
-            else
+            catch(Exception error)
             {
-                //If the mainfest file downloaded failed, do something else other than parsing.
-                logger.Error("Loading manifest failed of day " + DateTime.UtcNow.ToString("yyyyMMdd"));
+                logger.Error(error.Message);
             }
         }
     }

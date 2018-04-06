@@ -11,5 +11,7 @@
         public string Password { get; set; }
         public string LocalFolder { get; set; }
         public bool DebugMode { get; set; }
+        public int ConcurrentThread { get; set; }
+        public int RetryInterval { get; set; }
     }
 }
