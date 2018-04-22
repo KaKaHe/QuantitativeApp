@@ -4,27 +4,33 @@ using EIAUpdater.Model;
 using log4net;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace EIAUpdater
 {
     class EIAUpdater
     {
-        public static ILog logger = LogManager.GetLogger(typeof(EIAUpdater));
+        public static ILog logger;
 
         static void Main(string[] args)
         {
-            if (args == null)
+            if (args == null || args.Length == 0)
             {
+                GlobalContext.Properties["LogPath"] = @"C:\EIA_Updater\Logs\";
+                logger = LogManager.GetLogger(typeof(EIAUpdater));
                 logger.Error("No Configuration file found.");
                 return;
             }
-            logger.Info("Start updating EIA's data for today");
             //Configurations config = FileHandler.ReadJsontoObject<Configurations>("Config.json");
             //logger.Info("Configuration file read successfully.");
             try
             {
                 Configurations config = FileHandler.ReadJsontoObject<Configurations>(args[0]);
+                GlobalContext.Properties["LogPath"] = Path.Combine(config.LogPath, "");
+                logger = LogManager.GetLogger(typeof(EIAUpdater));
+                logger.Info("Start updating EIA's data for today");
+                logger.Info("Read configuration of " + args[0]);
                 ManifestHandler manifest = new ManifestHandler(config);
 
                 if (manifest.Download())

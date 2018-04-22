@@ -6,7 +6,8 @@
   "ManifestCollection": "EIA_Manifest",
   "UserName": "EIA",
   "Password": "EIA",
-  "LocalFolder": "C:\\DataGrabing\\",
+  "LocalFolder": "C:\\EIA_Updater\\DataGrabing\\",
+  "LogPath": "C:\\EIA_Updater\\Logs\\",
   "DebugMode": false,
   "ConcurrentThread": 2,
   "RetryInterval": 120000
